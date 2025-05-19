@@ -1,0 +1,13 @@
+# Java / Maven
+**/target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Node
+frontend/node_modules/
+
+# Docker volumes
+pgdata/
+
+# IDE / OS
+.idea/
+.DS_Store

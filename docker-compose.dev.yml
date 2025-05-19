@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:14
+    container_name: pg-library
+    environment:
+      POSTGRES_DB: library
+      POSTGRES_USER: library
+      POSTGRES_PASSWORD: secret
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U library"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redpanda:
+    image: redpandadata/redpanda:v24.1.2
+    container_name: redpanda
+    command: >
+      redpanda start
+        --overprovisioned
+        --smp 1 --memory 1G --reserve-memory 0M
+        --check=false
+        --kafka-addr    PLAINTEXT://0.0.0.0:9092
+        --advertise-kafka-addr PLAINTEXT://redpanda:9092
+    ports: ["9092:9092"]           # expose to host
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9644/v1/status/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.0
+    container_name: schema-registry
+    restart: on-failure
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://redpanda:9092
+    ports: ["8081:8081"]
+
+volumes:
+  pgdata:
+
