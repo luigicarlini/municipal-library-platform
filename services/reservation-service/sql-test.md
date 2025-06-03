@@ -25,6 +25,162 @@ curl -s http://localhost:8080/holds/302244cb-d9f9-49d4-be1c-87b27978c5a0 | jq
 
 curl -s http://localhost:8080/holds/d118a1a6-111b-4117-b472-910fdf4a4c89/book | jq
 
+Regression Tests curl:
+--------------------------------------------------------------------------------------------
+🧪 1.1 – Test fallimento (bibId inesistente)
+--------------------------------------------------------------------------------------------
+curl -X POST http://localhost:8080/holds \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patronId": "11111111-1111-1111-1111-111111111111",
+    "bibId": "00000000-0000-0000-0000-000000000000",
+    "pickupBranch": "Est",
+    "status": "PLACED",
+    "position": 1
+  }' | jq
+
+✅ Expected result:
+{
+  "error": "Book not found for bibId: 00000000-0000-0000-0000-000000000000"
+}
+
+--------------------------------------------------------------------------------------------
+🧪 1.2 – Test successo (bibId valido)
+--------------------------------------------------------------------------------------------
+curl -X POST http://localhost:8080/holds \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patronId": "22222222-2222-2222-2222-222222222222",
+    "bibId": "c1dd3865-ff8f-4de3-8ab1-0e150b367d88",
+    "pickupBranch": "Centro",
+    "status": "PLACED",
+    "position": 5
+  }' | jq
+
+✅ Expected result:
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   428    0   242  100   186   4527   3479 --:--:-- --:--:-- --:--:--  8075
+{
+  "id": "81cd1c5c-7f25-46cb-ac9b-408b92f9c5a5",
+  "patronId": "22222222-2222-2222-2222-222222222222",
+  "bibId": "c1dd3865-ff8f-4de3-8ab1-0e150b367d88",
+  "pickupBranch": "Centro",
+  "status": "PLACED",
+  "position": 5,
+  "createdAt": "2025-06-03T11:59:49.691826522Z"
+}
+
+--------------------------------------------------------------------------------------------
+🧪 1.3 – Recupera Hold per ID
+--------------------------------------------------------------------------------------------
+curl -X GET http://localhost:8080/holds/5be310da-e78e-4d29-a555-dc16c9820a88 | jq
+
+✅ Expected result:
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   239    0   239    0     0   3173      0 --:--:-- --:--:-- --:--:--  3186
+{
+  "id": "5be310da-e78e-4d29-a555-dc16c9820a88",
+  "patronId": "19b81f1c-70fe-45df-be26-876af053f88b",
+  "bibId": "3fc24a80-c82c-4e0a-97eb-7830fb1fc746",
+  "pickupBranch": "Est",
+  "status": "CANCELLED",
+  "position": 1,
+  "createdAt": "2025-05-22T11:44:50.544091Z"
+}
+
+--------------------------------------------------------------------------------------------
+🧪 1.4 – Ottieni il libro associato
+--------------------------------------------------------------------------------------------
+curl -X GET http://localhost:8080/holds/5be310da-e78e-4d29-a555-dc16c9820a88/book | jq
+
+✅ Expected result:
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   175    0   175    0     0   5444      0 --:--:-- --:--:-- --:--:--  5468
+{
+  "id": "3fc24a80-c82c-4e0a-97eb-7830fb1fc746",
+  "title": "Uno, nessuno e centomila 12",
+  "author": "Italo Svevo",
+  "genre": "Fantascienza",
+  "publicationYear": 1878,
+  "isbn": "9781795308755"
+}
+
+--------------------------------------------------------------------------------------------
+🧪 1.5 – Ottieni dettagli aggregati
+--------------------------------------------------------------------------------------------
+curl -X GET http://localhost:8080/holds/5be310da-e78e-4d29-a555-dc16c9820a88/details | jq
+
+✅ Expected result:
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   431    0   431    0     0   6446      0 --:--:-- --:--:-- --:--:--  6530
+{
+  "hold": {
+    "id": "5be310da-e78e-4d29-a555-dc16c9820a88",
+    "patronId": "19b81f1c-70fe-45df-be26-876af053f88b",
+    "bibId": "3fc24a80-c82c-4e0a-97eb-7830fb1fc746",
+    "pickupBranch": "Est",
+    "status": "CANCELLED",
+    "position": 1,
+    "createdAt": "2025-05-22T11:44:50.544091Z"
+  },
+  "book": {
+    "id": "3fc24a80-c82c-4e0a-97eb-7830fb1fc746",
+    "title": "Uno, nessuno e centomila 12",
+    "author": "Italo Svevo",
+    "genre": "Fantascienza",
+    "publicationYear": 1878,
+    "isbn": "9781795308755"
+  }
+}
+
+--------------------------------------------------------------------------------------------
+🧪 1.6 – Aggiorna la Hold
+--------------------------------------------------------------------------------------------
+curl -X PUT http://localhost:8080/holds/5be310da-e78e-4d29-a555-dc16c9820a88 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pickupBranch": "Centrale",
+    "status": "READY",
+    "position": 9
+  }' | jq
+
+✅ Expected result:
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   318    0   240  100    78   3280   1066 --:--:-- --:--:-- --:--:--  4356
+{
+  "id": "5be310da-e78e-4d29-a555-dc16c9820a88",
+  "patronId": "19b81f1c-70fe-45df-be26-876af053f88b",
+  "bibId": "3fc24a80-c82c-4e0a-97eb-7830fb1fc746",
+  "pickupBranch": "Centrale",
+  "status": "READY",
+  "position": 9,
+  "createdAt": "2025-05-22T11:44:50.544091Z"
+}
+
+--------------------------------------------------------------------------------------------
+🧪 1.7 – Ricerca avanzata
+--------------------------------------------------------------------------------------------
+curl -G http://localhost:8080/holds --data-urlencode "author=Alexandre Dumas" --data-urlencode "status=PLACED" | jq
+
+curl -G http://localhost:8080/holds --data-urlencode "author=Luigi Pirandello" --data-urlencode "status=PLACED" | jq
+✅ Expected result:
+[
+  {
+    "id": "4cf36c5b-16a8-413f-ac78-99e1c58ab69f",
+    "patronId": "9a127c9f-c084-4dc1-a666-b28c2102c330",
+    "bibId": "a4052a15-2a15-4d39-8781-83eec1087345",
+    "pickupBranch": "Ovest",
+    "status": "PLACED",
+    "position": 4,
+    "createdAt": "2025-05-23T19:22:37.220108Z"
+  },
+]....
+
 TEST GET su HOLDS:
 ---------------------------------------------------------------------------------------------
 curl -X GET "http://localhost:8080/holds?title=rosa" | jq
@@ -54,6 +210,85 @@ curl -X GET "http://localhost:8080/holds?genre=distopia&publicationYear=1949" | 
 curl -X GET "http://localhost:8080/holds?author=orwell&publicationYear=1949" | jq
 
 
+
+TEST GET su BOOKS:
+---------------------------------------------------------------------------------------------
+curl -X GET "http://localhost:8080/books?isbn=9788807900706" | jq
+curl -X GET "http://localhost:8080/books?title=gattopardo&author=lampedusa" | jq
+
+
+TEST DELETE su BOOKS:
+---------------------------------------------------------------------------------------------
+curl -X DELETE "http://localhost:8080/books/418140fb-6a9b-4b04-86f6-97f01451a385" -i
+
+*********************************************************************************************************
+-----soft delete--> Marks the book as CANCELLED.
+curl -X DELETE http://localhost:8080/holds/fb91b663-e092-42ec-af8b-917ed8743c54/cancel -i
+---> check the Hold:
+curl -X GET "http://localhost:8080/holds/fb91b663-e092-42ec-af8b-917ed8743c54" | jq
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   244    0   244    0     0  12166      0 --:--:-- --:--:-- --:--:-- 12200
+{
+  "id": "fb91b663-e092-42ec-af8b-917ed8743c54",
+  "patronId": "36e5be94-6c63-4b3a-abba-8993b697d9b9",
+  "bibId": "1c3b8981-03b6-49f2-951e-9528cf24c673",
+  "pickupBranch": "Centrale",
+  "status": "CANCELLED", <---------------
+  "position": 2,
+  "createdAt": "2025-05-30T08:20:51.857149Z"
+}
+curl -X GET "http://localhost:8080/holds/fb91b663-e092-42ec-af8b-917ed8743c54/book" | jq
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   169    0   169    0     0   3554      0 --:--:-- --:--:-- --:--:--  3595
+{
+  "id": "1c3b8981-03b6-49f2-951e-9528cf24c673",
+  "title": "Le notti bianche 22",
+  "author": "Robert L. Stevenson",
+  "genre": "Gotico",
+  "publicationYear": 2004,
+  "isbn": "9787255267198"
+}
+**************************************************************************************************************************************
+-----hard delete:
+giggi655@Luigi:~/dev/municipal-library-platform$ curl -X DELETE http://localhost:8080/holds/fb91b663-e092-42ec-af8b-917ed8743c54 -i
+HTTP/1.1 204
+Date: Fri, 30 May 2025 09:29:45 GMT
+
+giggi655@Luigi:~/dev/municipal-library-platform$ curl -X GET "http://localhost:8080/holds/fb91b663-e092-42ec-af8b-917ed8743c54" | jq
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+giggi655@Luigi:~/dev/municipal-library-platform$ curl -X GET "http://localhost:8080/holds/fb91b663-e092-42ec-af8b-917ed8743c54" | jq
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+**************************************************************************************************************************************
+
+
+TEST PUT su Books (Modifica libro esistente):
+-----------------------------------------------------------------------------------------
+curl -X PUT "http://localhost:8080/books/e644c534-6874-495f-9491-bd6b4c963a12" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Il Gattopardo",
+    "author": "Giuseppe Tomasi di Lampedusa",
+    "genre": "Romanzo storico",
+    "publicationYear": 1958,
+    "isbn": "9788807900706"
+  }' | jq
+
+
+TEST POST su Books (Creazione di un nuovo libro):
+-----------------------------------------------------------------------------------------
+   curl -X POST "http://localhost:8080/books"   -H "Content-Type: application/json"   -d '{
+    "title": "Zanna Bianca",
+    "author": "Jack London",
+    "genre": "Avventura",
+    "publicationYear": 1906,
+    "isbn": "9788893813006"
+  }' | jq
 
 
 ##########################################################################################
@@ -297,13 +532,13 @@ LIMIT 16;"
 
 
 
-📝 Fase 3: Costruzione UPDATE SQL:
+### 📝 Fase 3: Costruzione UPDATE SQL:
 UPDATE holds SET bib_id='[VALID_BOOK_ID]' WHERE id='[ORPHAN_HOLD_ID]';
 ✳️ Sostituisci VALID_BOOK_ID e ORPHAN_HOLD_ID con i valori raccolti nei passaggi precedenti.
 
 
 
-▶️ Fase 4: Esecuzione Massiva
+### ▶️ Fase 4: Esecuzione Massiva
 Esegui i comandi SQL direttamente nel container:
 docker exec -i pg-library psql -U library -d library <<EOF
 UPDATE holds SET bib_id='...' WHERE id='...';
@@ -359,7 +594,7 @@ SELECT COUNT(*) FROM holds h LEFT JOIN books b ON h.bib_id = b.id WHERE b.id IS 
      0
 (1 row)
 
-3)Esame visivo:
+### 3) Esame visivo:
 giggi655@Luigi:~/dev/municipal-library-platform/services/reservation-service$ docker exec -it pg-library psql -U library -d library -c "
 SELECT h.id AS hold_id, b.title
 FROM holds h

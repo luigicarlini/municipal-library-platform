@@ -11,3 +11,5 @@ pgdata/
 # IDE / OS
 .idea/
 .DS_Store
+.vscode/
+*.sql

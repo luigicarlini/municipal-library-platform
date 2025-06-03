@@ -4,6 +4,8 @@ import it.comune.library.reservation.domain.Book;
 import it.comune.library.reservation.dto.BookDto;
 import it.comune.library.reservation.mapper.BookMapper;
 import it.comune.library.reservation.repository.BookRepository;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -97,4 +99,85 @@ public class BookController {
         List<Book> results = bookRepository.findByGenreContainingIgnoreCase(genre);
         return ResponseEntity.ok(results.stream().map(bookMapper::toDto).collect(Collectors.toList()));
     }
+
+    /**
+     * 🔍 Aggiorna un libro esistente.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<BookDto> updateBook(@PathVariable UUID id, @RequestBody BookDto bookDto) {
+        // Verifica se il libro con l'ID specificato esiste nel database
+        Optional<Book> existingBook = bookRepository.findById(id);
+        if (existingBook.isEmpty()) {
+            // Se non esiste, restituisce HTTP 404 Not Found
+            return ResponseEntity.notFound().build();
+        }
+
+        // Converte il DTO in un'entità Book
+        Book bookToUpdate = bookMapper.toEntity(bookDto);
+
+        // Imposta l'ID dell'entità al valore specificato nel path (evita la creazione
+        // di un nuovo record)
+        bookToUpdate.setId(id);
+
+        // Salva l'entità aggiornata nel database (effettua l'UPDATE)
+        Book updatedBook = bookRepository.save(bookToUpdate);
+
+        // Converte l'entità aggiornata in DTO e restituisce HTTP 200 OK con il corpo
+        // aggiornato
+        return ResponseEntity.ok(bookMapper.toDto(updatedBook));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBook(@PathVariable UUID id) {
+        /*
+         * Endpoint HTTP DELETE per eliminare un libro esistente identificato dal suo
+         * UUID.
+         *
+         * - Path: /books/{id}
+         * - Metodo: DELETE
+         * - Parametri: UUID id (nella path)
+         * - Comportamento:
+         * - Verifica se esiste un libro con l'id fornito.
+         * - Se esiste, lo elimina dal database e restituisce HTTP 204 No Content.
+         * - Se non esiste, restituisce HTTP 404 Not Found.
+         */
+        Optional<Book> optionalBook = bookRepository.findById(id);
+
+        if (optionalBook.isEmpty()) {
+            // Libro non trovato → 404 Not Found
+            return ResponseEntity.notFound().build();
+        }
+
+        // Libro trovato → lo eliminiamo
+        bookRepository.deleteById(id);
+
+        // Restituiamo 204 No Content per indicare che l'operazione è andata a buon fine
+        // ma senza corpo di risposta
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Endpoint per la creazione di un nuovo libro.
+     * Accetta un oggetto BookDto nel body della richiesta e lo salva nel database.
+     *
+     * @param bookDto DTO con i dati del libro da creare
+     * @return BookDto rappresentante il libro salvato con ID generato
+     */
+    @PostMapping
+    public ResponseEntity<BookDto> createBook(@RequestBody BookDto bookDto) {
+        // Conversione da DTO a entità
+        Book book = bookMapper.toEntity(bookDto);
+
+        // Salvataggio nel database tramite il repository
+        Book savedBook = bookRepository.save(book);
+
+        // Conversione dell'entità salvata in DTO per la risposta
+        BookDto responseDto = bookMapper.toDto(savedBook);
+
+        // Ritorna il libro creato con codice HTTP 201 (Created)
+        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+    }
+
+
+
 }

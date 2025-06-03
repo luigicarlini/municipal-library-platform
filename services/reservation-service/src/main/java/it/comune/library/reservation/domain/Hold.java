@@ -16,6 +16,7 @@ import it.comune.library.reservation.domain.Book; // ✅ IMPORT ESSENZIALE
 public class Hold {
 
     @Id
+    @GeneratedValue
     private UUID id;
 
     @Column(name = "hold_id", nullable = false, unique = true)

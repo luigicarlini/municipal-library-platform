@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 public interface HoldRepository extends JpaRepository<Hold, UUID> {
 
@@ -52,4 +53,9 @@ public interface HoldRepository extends JpaRepository<Hold, UUID> {
             @Param("publicationYear") Integer publicationYear,
             @Param("position") Integer position
     );
+
+    @Query("SELECT h FROM Hold h JOIN FETCH h.book WHERE h.id = :id")
+    Optional<Hold> findByIdWithBook(@Param("id") UUID id);
+
+    Optional<Hold> findByPatronIdAndBibId(UUID patronId, UUID bibId);
 }

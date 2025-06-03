@@ -1,4 +1,5 @@
 package it.comune.library.reservation.domain;
+import org.hibernate.annotations.GenericGenerator;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,8 +14,10 @@ import java.util.UUID;
 @Builder
 public class Book {
 
-    @Id
-    private UUID id;
+@Id
+@GeneratedValue
+@Column(nullable = false, updatable = false)
+private UUID id;
 
 @Column(name = "title", nullable = false, columnDefinition = "VARCHAR(255)")
 private String title;
