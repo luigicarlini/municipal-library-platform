@@ -143,6 +143,12 @@ docker exec -it pg-library psql -U library -d library -c "SELECT id, title, auth
 (20 rows)
 
 
+SWAGGER DOCS:
+http://localhost:8080/swagger-ui/index.html#/
+
+
+
+
 
 
 
