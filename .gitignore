@@ -12,4 +12,9 @@ pgdata/
 .idea/
 .DS_Store
 .vscode/
+
+# Ignore all SQL files
 *.sql
+# Except Flyway migration files
+!services/reservation-service/src/main/resources/db/migration/*.sql
+
