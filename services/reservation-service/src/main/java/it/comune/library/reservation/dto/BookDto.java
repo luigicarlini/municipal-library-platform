@@ -3,6 +3,7 @@ package it.comune.library.reservation.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
@@ -26,4 +27,10 @@ public class BookDto {
 
     @Schema(description = "Codice ISBN", example = "9788807900386")
     private String isbn;
+    
+    @Schema(description = "Prezzo di vendita in EUR", example = "14.99")
+    private BigDecimal price;          // ✅ nuovo
+
+    @Schema(description = "Copie disponibili alla vendita", example = "5")
+    private Integer stockQuantity;  // ✅ nuovo
 }

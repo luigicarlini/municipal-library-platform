@@ -90,18 +90,20 @@ public class BookController {
             @ApiResponse(responseCode = "200", description = "Libro aggiornato con successo"),
             @ApiResponse(responseCode = "404", description = "Libro non trovato")
     })
-    @PutMapping("/{id}")
-    public ResponseEntity<BookDto> updateBook(@PathVariable UUID id, @RequestBody BookDto bookDto) {
-        Optional<Book> existingBook = bookRepository.findById(id);
-        if (existingBook.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
 
-        Book bookToUpdate = bookMapper.toEntity(bookDto);
-        bookToUpdate.setId(id);
-        Book updatedBook = bookRepository.save(bookToUpdate);
-        return ResponseEntity.ok(bookMapper.toDto(updatedBook));
+    @PutMapping("/{id}")
+    public ResponseEntity<BookDto> updateBook(@PathVariable UUID id,
+            @RequestBody BookDto bookDto) {
+
+        return bookRepository.findById(id)
+                .map(existing -> {
+                    bookMapper.updateEntity(existing, bookDto); // <-- merge
+                    Book saved = bookRepository.save(existing); // entity già managed
+                    return ResponseEntity.ok(bookMapper.toDto(saved));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
+
 
     @Operation(summary = "Elimina un libro tramite ID")
     @ApiResponses({
@@ -129,4 +131,6 @@ public class BookController {
         BookDto responseDto = bookMapper.toDto(savedBook);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
+
+    
 }

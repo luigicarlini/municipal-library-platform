@@ -1,11 +1,18 @@
 package it.comune.library.reservation.domain;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import it.comune.library.reservation.validation.ISBN;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
+/**
+ * 📖 Entità JPA rappresentante un libro nella biblioteca, estesa per la funzionalità Bookshop.
+ */
 @Entity
 @Table(name = "books")
 @Data
@@ -29,7 +36,7 @@ public class Book {
     @Schema(description = "Autore del libro", example = "Jane Austen")
     private String author;
 
-    @Column(name = "genre", nullable = true, columnDefinition = "VARCHAR(100)")
+    @Column(name = "genre", columnDefinition = "VARCHAR(100)")
     @Schema(description = "Genere letterario del libro", example = "Romanzo")
     private String genre;
 
@@ -37,7 +44,26 @@ public class Book {
     @Schema(description = "Anno di pubblicazione", example = "1813")
     private Integer publicationYear;
 
-    @Column(name = "isbn", nullable = true, columnDefinition = "VARCHAR(20)")
-    @Schema(description = "Codice ISBN del libro", example = "9788807900386")
+    /* ------------ ESTENSIONE BOOKSHOP ------------ */
+
+    @Positive
+    @Column(nullable = false, precision = 10, scale = 2)
+    @Schema(description = "Prezzo di vendita in EUR", example = "14.99")
+    private BigDecimal price;
+
+    @Min(0)
+    @Column(name = "stock_quantity", nullable = false)
+    @Schema(description = "Copie disponibili alla vendita", example = "5")
+    private Integer stockQuantity;
+
+    @ISBN
+    @Column(nullable = false, unique = true, length = 17)
+    @Schema(description = "Codice ISBN valido (ISBN-10 o ISBN-13)", example = "9788807900386")
     private String isbn;
+
+    /* ------------ OTTIMISTIC LOCK ------------ */
+
+    @Version
+    @Schema(description = "Versione per il locking ottimistico")
+    private Integer version;
 }

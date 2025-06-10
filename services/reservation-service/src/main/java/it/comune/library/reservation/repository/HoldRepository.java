@@ -54,8 +54,25 @@ public interface HoldRepository extends JpaRepository<Hold, UUID> {
             @Param("position") Integer position
     );
 
+    /**
+     * Carica una prenotazione con il relativo libro associato (JOIN FETCH).
+     */
     @Query("SELECT h FROM Hold h JOIN FETCH h.book WHERE h.id = :id")
     Optional<Hold> findByIdWithBook(@Param("id") UUID id);
 
+    /**
+     * Trova una prenotazione per utente e libro (usato per evitare duplicati).
+     */
     Optional<Hold> findByPatronIdAndBibId(UUID patronId, UUID bibId);
+
+    /**
+     * Metodo semantico per aggiornare una prenotazione.
+     * Utile per distinguere logicamente il salvataggio da una creazione.
+     *
+     * @param hold prenotazione da aggiornare
+     * @return prenotazione aggiornata
+     */
+    default Hold updateHold(Hold hold) {
+        return save(hold);
+    }
 }

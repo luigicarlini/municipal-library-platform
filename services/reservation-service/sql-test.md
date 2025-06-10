@@ -74,7 +74,7 @@ curl -X POST http://localhost:8080/holds \
 --------------------------------------------------------------------------------------------
 🧪 1.3 – Recupera Hold per ID
 --------------------------------------------------------------------------------------------
-holdid: 5be310da-e78e-4d29-a555-dc16c9820a88
+holdid:
 curl -X GET http://localhost:8080/holds/5be310da-e78e-4d29-a555-dc16c9820a88 | jq
 
 ✅ Expected result:
@@ -215,6 +215,7 @@ curl -X GET "http://localhost:8080/holds?author=orwell&publicationYear=1949" | j
 TEST GET su BOOKS:
 ---------------------------------------------------------------------------------------------
 curl -X GET "http://localhost:8080/books?isbn=9788807900706" | jq
+curl -X GET "http://localhost:8080/books?isbn=9788893813006" | jq
 curl -X GET "http://localhost:8080/books?title=gattopardo&author=lampedusa" | jq
 
 
