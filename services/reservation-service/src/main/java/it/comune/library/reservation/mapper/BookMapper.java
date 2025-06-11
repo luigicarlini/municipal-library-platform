@@ -27,6 +27,7 @@ public class BookMapper {
         // campi Book-shop
         dto.setPrice(book.getPrice());
         dto.setStockQuantity(book.getStockQuantity());
+        dto.setVersion(book.getVersion());
 
         return dto;
     }
@@ -48,6 +49,7 @@ public class BookMapper {
         // campi Book-shop
         book.setPrice(dto.getPrice());
         book.setStockQuantity(dto.getStockQuantity());
+        book.setVersion(dto.getVersion());
 
         return book;
     }

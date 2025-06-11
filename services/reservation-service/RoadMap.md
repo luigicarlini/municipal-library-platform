@@ -256,8 +256,46 @@ Migrazioni DB	                 ✅ V10 sequenza ordini	                         
 --------------------------------------------------------------------------------------------------------------------------------------------
 Regression script	             ✅ green run	                                              export JUnit/HTML per CI - pending
 --------------------------------------------------------------------------------------------------------------------------------------------
-Legacy alias	                 ✅ test manuale	                                              automatizzare /books/search/* & /holds/search/*
+Legacy alias	                 ✅ test manuale	                                              ✅ automatizzare /books/search/* & /holds/search/*
 --------------------------------------------------------------------------------------------------------------------------------------------
+Suite:	                                      Obiettivo	                                        Stato
+Nuova API (regression_test.sh)	              CRUD completo + ordini	                        ✅ OK
+Back-compat (regression_test-old.sh)	      Alias HAL “find-by-*”	                            ✅ OK
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+🟢 Migrazione V11 – correzione autori	V11__fix_book_authors.sql con una UPDATE per ciascun id ✅ OK
+                                        • (opzionale: JSON array + loop PL/pgSQL per mantenerlo conciso.) 
+--------------------------------------------------------------------------------------------------------------------------------------------
+Procediamo adesso (dopo aver effettuato il rilascio in git) con i Prossimi step suggeriti:
+In particolare seguiremo quest'ordine:
+🟢1) Test di concorrenza:
+   - Aggiungere casi di “optimistic locking” (update simultanei sullo stesso book) per verificare il campo version.
+   ====> il campo @Version su Book protegge da aggiornamenti concorrenti: il secondo commit fallisce con 409 Conflict.✅ OK
+# 1. variabile libro✅ OK
+BOOK=c1dd3865-ff8f-4de3-8ab1-0e150b367d88
+
+# 2. crea l’ordine (salva l’id nella variabile OID)  ✅ OK: POST → 201 Created
+OID=$(curl -s -X POST localhost:8080/orders \
+  -H 'Content-Type: application/json' \
+  -d "{\"bookId\":\"$BOOK\",\"patronId\":1,\"quantity\":1}" | jq -r .id)
+
+echo "Creato ordine ID=$OID"✅ OL
+
+# 3. annulla l’ordine✅ OK : PUT → 204 No Content
+curl -i -X PUT "localhost:8080/orders/$OID/cancel"
+
+# 4. prova a segnarlo pagato (deve dare 409)✅ OK: PUT /mark-paid → 409 Conflict (perché l’ordine è già in stato CANCELLED).
+curl -i -X PUT "localhost:8080/orders/$OID/mark-paid?gatewayRef=PAY-TEST"
+
+
+
+
+
+
+🟢2) Aggiornmamento e test su Documentazione Swagger:
+   - Aggiungere le nuove rotta /orders/{id}/cancel e /orders/{id}/mark-paid nella spec OpenAPI (arricchisce Swagger-UI).✅ OK
+--------------------------------------------------------------------------------------------------------------------------------------------
+
 
 
 
@@ -266,26 +304,18 @@ Legacy alias	                 ✅ test manuale	                                 
 📊 Stato dei test “old-curl” + valutazione del dataset
 --------------------------------------------------------------------------------------------------------------------------------------------
 Gruppo	            End-point legacy	                              Esito test manuali
-BOOKS	            `/books/search/find-by-title	                  author
-HOLDS	            `/holds/search/find-by-title	                  author`
-Filtri combinati	/holds?title=…&author=…&pickupBranch=…&status=…	  OK – combinazioni multiple riportano il sotto-insieme atteso.
-Filtri avanzati	    genre, publicationYear	                          OK (Distopia, Psicologico, 1949…).
-Soft / Hard delete	PUT /cancel, DELETE hold, DELETE book	          OK – status, FK e cascata confermati.
-Order flow	        POST /orders, PUT /cancel, PUT /mark-paid	      OK – sequenza + stato 409 su ordine già cancellato verificati.
-
-
-❗ Problema emerso
-Il dataset books contiene ~25 voci con autore errato rispetto al titolo (es. “Il barone rampante 1” → Fëdor Dostoevskij).
-I test passano perché il codice non valida la coerenza titolo↔autore, ma ciò riduce l’affidabilità dei casi d’uso di ricerca per autore.
-
-
+BOOKS	            `/books/search/find-by-title	                  author✅ OK
+HOLDS	            `/holds/search/find-by-title	                  author`✅ OK
+Filtri combinati	/holds?title=…&author=…&pickupBranch=…&status=…	  combinazioni multiple riportano il sotto-insieme atteso.✅ OK
+Filtri avanzati	    genre, publicationYear	                          (Distopia, Psicologico, 1949…).✅ OK
+Soft / Hard delete	PUT /cancel, DELETE hold, DELETE book	          status, FK e cascata confermati.✅ OK
+Order flow	        POST /orders, PUT /cancel, PUT /mark-paid	      sequenza + stato 409 su ordine già cancellato verificati.✅ OK
 
 
 --------------------------------------------------------------------------------------------------------------------------------------------
                                                              📌 To-do immediati:
 --------------------------------------------------------------------------------------------------------------------------------------------
-🟢 Migrazione V11 – correzione autori	V11__fix_book_authors.sql con una UPDATE per ciascun id
-                                        • opzionale: JSON array + loop PL/pgSQL per mantenerlo conciso.
+
 --------------------------------------------------------------------------------------------------------------------------------------------
 Ordini – percorso “happy-path”: • test PUT /mark-paid su ordine in stato CREATED → atteso 204 & status=PAID
                                 • verifica decremento stockQuantity (da implementare in service + trigger DB)
@@ -302,6 +332,7 @@ Paginazione & filtri combinati: • /holds?title=&author=&status=&pickupBranch=&
 --------------------------------------------------------------------------------------------------------------------------------------------
 CI integration: GitHub Actions: spin-up postgres, run ./regression_test.sh, publish artefatto log
 --------------------------------------------------------------------------------------------------------------------------------------------
+
 
 
 

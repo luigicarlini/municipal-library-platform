@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -42,8 +42,7 @@ public class BookController {
             @RequestParam(required = false) String author,
             @RequestParam(required = false) String genre,
             @RequestParam(required = false) String isbn,
-            @RequestParam(required = false) Integer publicationYear
-    ) {
+            @RequestParam(required = false) Integer publicationYear) {
         List<Book> books = bookRepository.searchByOptionalFilters(title, author, genre, isbn, publicationYear);
         List<BookDto> dtos = books.stream().map(bookMapper::toDto).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
@@ -58,7 +57,7 @@ public class BookController {
     public ResponseEntity<BookDto> getBookById(@PathVariable UUID id) {
         Optional<Book> book = bookRepository.findById(id);
         return book.map(value -> ResponseEntity.ok(bookMapper.toDto(value)))
-                   .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @Operation(summary = "Ricerca libri per titolo (substring match, case-insensitive)")
@@ -85,25 +84,51 @@ public class BookController {
         return ResponseEntity.ok(results.stream().map(bookMapper::toDto).collect(Collectors.toList()));
     }
 
+    /*
+     * @Operation(summary = "Aggiorna un libro esistente")
+     * 
+     * @ApiResponses({
+     * 
+     * @ApiResponse(responseCode = "200", description =
+     * "Libro aggiornato con successo"),
+     * 
+     * @ApiResponse(responseCode = "404", description = "Libro non trovato")
+     * })
+     * 
+     * @PutMapping("/{id}")
+     * public ResponseEntity<BookDto> updateBook(@PathVariable UUID id,
+     * 
+     * @RequestBody BookDto bookDto) {
+     * 
+     * return bookRepository.findById(id)
+     * .map(existing -> {
+     * bookMapper.updateEntity(existing, bookDto); // <-- merge
+     * Book saved = bookRepository.save(existing); // entity già managed
+     * return ResponseEntity.ok(bookMapper.toDto(saved));
+     * })
+     * .orElse(ResponseEntity.notFound().build());
+     * }
+     */
+    /**************************************************************************************************************************************** */
     @Operation(summary = "Aggiorna un libro esistente")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Libro aggiornato con successo"),
+            @ApiResponse(responseCode = "409", description = "Versione non corrente"),
             @ApiResponse(responseCode = "404", description = "Libro non trovato")
     })
-
     @PutMapping("/{id}")
+    @Transactional // 👈 unica transazione
     public ResponseEntity<BookDto> updateBook(@PathVariable UUID id,
-            @RequestBody BookDto bookDto) {
+            @RequestBody BookDto dto) {
 
         return bookRepository.findById(id)
                 .map(existing -> {
-                    bookMapper.updateEntity(existing, bookDto); // <-- merge
-                    Book saved = bookRepository.save(existing); // entity già managed
+                    bookMapper.updateEntity(existing, dto); // muta l’entità managed
+                    Book saved = bookRepository.save(existing); // flush → version++
                     return ResponseEntity.ok(bookMapper.toDto(saved));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
-
 
     @Operation(summary = "Elimina un libro tramite ID")
     @ApiResponses({
@@ -131,6 +156,4 @@ public class BookController {
         BookDto responseDto = bookMapper.toDto(savedBook);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
-
-    
 }

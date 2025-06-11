@@ -33,4 +33,7 @@ public class BookDto {
 
     @Schema(description = "Copie disponibili alla vendita", example = "5")
     private Integer stockQuantity;  // ✅ nuovo
+
+    @Schema(description = "Versione ottimistic locking")
+    private Integer version;
 }
