@@ -243,32 +243,30 @@ Fammi sapere quale di questi punti vuoi attaccare per primo domani e preparo i d
 --------------------------------------------------------------------------------------------------------------------------------------------
 Macro area	                     Coperto oggi	                                               Note
 Libro (CRUD + search)	         ✅ Create, Read, Update, filtro title/author/genre
-                                 ❌ Delete hard & soft	                                      soft-delete da implementare
+                                 ✅  Delete hard & soft	                                     soft-delete da implementare
 --------------------------------------------------------------------------------------------------------------------------------------------
-Hold (CRUD + filtri)	         ✅ Create, Read, search by status/author
-                                 ❌ Update / cancel / expire flow	                          logica scadenza ancora fuori scope
+Hold (CRUD + filtri)	            ✅ Create, Read, search by status/author
+                                 ❌ Update / cancel / expire flow	                            logica scadenza ancora fuori scope
 --------------------------------------------------------------------------------------------------------------------------------------------
 Order flow	                     ✅ Create → Cancel (204) → Mark-paid (409 se già cancellato)
                                  ❌ Mark-paid positivo (CREATED → PAID)
                                  ❌ stock-check e decremento	                                  da aggiungere business rule
 --------------------------------------------------------------------------------------------------------------------------------------------
-Migrazioni DB	                 ✅ V10 sequenza ordini	                                      prossima: trigger stock
+Migrazioni DB	                 ✅ V10 sequenza ordini	                                        prossima: trigger stock
 --------------------------------------------------------------------------------------------------------------------------------------------
-Regression script	             ✅ green run	                                              export JUnit/HTML per CI - pending
+Regression script	              ✅ green run	                                                 export JUnit/HTML per CI - pending
 --------------------------------------------------------------------------------------------------------------------------------------------
 Legacy alias	                 ✅ test manuale	                                              ✅ automatizzare /books/search/* & /holds/search/*
 --------------------------------------------------------------------------------------------------------------------------------------------
-Suite:	                                      Obiettivo	                                        Stato
+Suite:	                                      Obiettivo	                                       Stato
 Nuova API (regression_test.sh)	              CRUD completo + ordini	                        ✅ OK
-Back-compat (regression_test-old.sh)	      Alias HAL “find-by-*”	                            ✅ OK
+Back-compat (regression_test-old.sh)	        Alias HAL “find-by-*”	                           ✅ OK
 
 --------------------------------------------------------------------------------------------------------------------------------------------
 🟢 Migrazione V11 – correzione autori	V11__fix_book_authors.sql con una UPDATE per ciascun id ✅ OK
                                         • (opzionale: JSON array + loop PL/pgSQL per mantenerlo conciso.) 
 --------------------------------------------------------------------------------------------------------------------------------------------
-Procediamo adesso (dopo aver effettuato il rilascio in git) con i Prossimi step suggeriti:
-In particolare seguiremo quest'ordine:
-🟢1) Test di concorrenza:
+🟢1) Test di concorrenza: “optimistic locking”
    - Aggiungere casi di “optimistic locking” (update simultanei sullo stesso book) per verificare il campo version.
    ====> il campo @Version su Book protegge da aggiornamenti concorrenti: il secondo commit fallisce con 409 Conflict.✅ OK
 # 1. variabile libro✅ OK
@@ -288,28 +286,21 @@ curl -i -X PUT "localhost:8080/orders/$OID/cancel"
 curl -i -X PUT "localhost:8080/orders/$OID/mark-paid?gatewayRef=PAY-TEST"
 
 
-
-
-
-
 🟢2) Aggiornmamento e test su Documentazione Swagger:
    - Aggiungere le nuove rotta /orders/{id}/cancel e /orders/{id}/mark-paid nella spec OpenAPI (arricchisce Swagger-UI).✅ OK
 --------------------------------------------------------------------------------------------------------------------------------------------
 
 
-
-
-
 --------------------------------------------------------------------------------------------------------------------------------------------
 📊 Stato dei test “old-curl” + valutazione del dataset
 --------------------------------------------------------------------------------------------------------------------------------------------
-Gruppo	            End-point legacy	                              Esito test manuali
-BOOKS	            `/books/search/find-by-title	                  author✅ OK
-HOLDS	            `/holds/search/find-by-title	                  author`✅ OK
-Filtri combinati	/holds?title=…&author=…&pickupBranch=…&status=…	  combinazioni multiple riportano il sotto-insieme atteso.✅ OK
-Filtri avanzati	    genre, publicationYear	                          (Distopia, Psicologico, 1949…).✅ OK
-Soft / Hard delete	PUT /cancel, DELETE hold, DELETE book	          status, FK e cascata confermati.✅ OK
-Order flow	        POST /orders, PUT /cancel, PUT /mark-paid	      sequenza + stato 409 su ordine già cancellato verificati.✅ OK
+Gruppo	            End-point legacy	                                Esito test manuali
+BOOKS	              `/books/search/find-by-title	                    author✅ OK
+HOLDS	              `/holds/search/find-by-title	                    author`✅ OK
+Filtri combinati	  /holds?title=…&author=…&pickupBranch=…&status=…	  combinazioni multiple riportano il sotto-insieme atteso.✅ OK
+Filtri avanzati	  genre, publicationYear	                          (Distopia, Psicologico, 1949…).✅ OK
+Soft / Hard delete  PUT /cancel, DELETE hold, DELETE book	           status, FK e cascata confermati.✅ OK
+Order flow	        POST /orders, PUT /cancel, PUT /mark-paid	        sequenza + stato 409 su ordine già cancellato verificati.✅ OK
 
 
 --------------------------------------------------------------------------------------------------------------------------------------------

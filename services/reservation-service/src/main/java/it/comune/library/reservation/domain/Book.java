@@ -7,63 +7,63 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 
+import org.hibernate.annotations.SQLDelete;          // ← import Hibernate
+import org.hibernate.annotations.Where;             // ← import Hibernate
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * 📖 Entità JPA rappresentante un libro nella biblioteca, estesa per la funzionalità Bookshop.
+ * 📖 Entità JPA rappresentante un libro (biblioteca + Book-shop).
  */
 @Entity
 @Table(name = "books")
+@SQLDelete(sql = "UPDATE books SET deleted = true WHERE id = ?")
+@Where(clause = "deleted = false")                  // esclude i soft-deleted
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "📖 Entità JPA rappresentante un libro nella biblioteca")
+@Schema(description = "Libro")
 public class Book {
 
-    @Id
-    @GeneratedValue
+    /* ─────────── PK ─────────── */
+    @Id @GeneratedValue
     @Column(nullable = false, updatable = false)
-    @Schema(description = "ID univoco del libro", example = "78df7ab2-8a8d-47e6-bce7-3da0ff61d6b9")
     private UUID id;
 
-    @Column(name = "title", nullable = false, columnDefinition = "VARCHAR(255)")
-    @Schema(description = "Titolo del libro", example = "Orgoglio e pregiudizio")
+    /* ─────────── Metadati ─────────── */
+    @Column(nullable = false, length = 255)
     private String title;
 
-    @Column(name = "author", nullable = false, columnDefinition = "VARCHAR(255)")
-    @Schema(description = "Autore del libro", example = "Jane Austen")
+    @Column(nullable = false, length = 255)
     private String author;
 
-    @Column(name = "genre", columnDefinition = "VARCHAR(100)")
-    @Schema(description = "Genere letterario del libro", example = "Romanzo")
+    @Column(length = 100)
     private String genre;
 
     @Column(name = "publication_year", nullable = false)
-    @Schema(description = "Anno di pubblicazione", example = "1813")
     private Integer publicationYear;
 
-    /* ------------ ESTENSIONE BOOKSHOP ------------ */
-
+    /* ─────────── Estensione Shop ─────────── */
     @Positive
     @Column(nullable = false, precision = 10, scale = 2)
-    @Schema(description = "Prezzo di vendita in EUR", example = "14.99")
     private BigDecimal price;
 
     @Min(0)
     @Column(name = "stock_quantity", nullable = false)
-    @Schema(description = "Copie disponibili alla vendita", example = "5")
     private Integer stockQuantity;
 
     @ISBN
     @Column(nullable = false, unique = true, length = 17)
-    @Schema(description = "Codice ISBN valido (ISBN-10 o ISBN-13)", example = "9788807900386")
     private String isbn;
 
-    /* ------------ OTTIMISTIC LOCK ------------ */
+    /* ─────────── Soft-delete flag ─────────── */
+    @Builder.Default                               // valore default anche con Lombok-builder
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean deleted = false;
 
+    /* ─────────── Optimistic locking ─────────── */
     @Version
-    @Schema(description = "Versione per il locking ottimistico")
     private Integer version;
 }
