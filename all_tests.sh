@@ -32,6 +32,7 @@ SCRIPTS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd 
 run "Nuova API regression"          "$SCRIPTS_DIR/regression_test.sh"
 run "Optimistic-locking demo"       "$SCRIPTS_DIR/concurrency_rest_conflict.sh"
 run "Soft/Hard-delete demo"         "$SCRIPTS_DIR/soft_hard_delete_demo.sh"
-run "Back-compat regression"        "$SCRIPTS_DIR/regression_test-old.sh"
+run "Soft-delete Book → Hold"       "$SCRIPTS_DIR/soft_delete_cascade_demo.sh"
+run "Back-compat regression"        "$SCRIPTS_DIR/regression_test-backcomp.sh"
 
 echo -e "${bold}${green}🎉 Tutti i test completati con successo.${reset}"

@@ -108,10 +108,10 @@ Area	                    Stato	                  Dettagli
 ----------------------------------------------------------------------------------------------------------------------------------
 Architettura	             ✅	Microservizio reservation-service ben strutturato (Spring Boot 3.3.0, PostgreSQL, Flyway)
 Entity & DTO	             ✅	Book, Hold, HoldDto, HoldUpdateDto, HoldDetailsDto
-Repository & Mapper	         ✅	Custom queries avanzate, searchByOptionalFilters, mapping pulito con HoldMapper
-Controller REST	             ✅	GET, POST, PUT, DELETE implementati con validazioni, Swagger/OpenAPI documentato
-Swagger / OpenAPI	         ✅	Tutti gli endpoint documentati e testabili da Swagger UI
-Data Persistence	         ✅	PostgreSQL gestito da Flyway, script SQL iniziali, volumi Docker persistenti
+Repository & Mapper	       ✅	Custom queries avanzate, searchByOptionalFilters, mapping pulito con HoldMapper
+Controller REST	          ✅	GET, POST, PUT, DELETE implementati con validazioni, Swagger/OpenAPI documentato
+Swagger / OpenAPI	          ✅	Tutti gli endpoint documentati e testabili da Swagger UI
+Data Persistence	          ✅	PostgreSQL gestito da Flyway, script SQL iniziali, volumi Docker persistenti
 ----------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -339,22 +339,266 @@ Priorità	Task
 
 
 
+**********************************************************************************************************************************************************
+******************************************************  12/06/2025  **************************************************************************************
+**********************************************************************************************************************************************************
+                                   📋 Copertura test — stato aggiornato (12 GIU 2025)
+
+Macro-area	                    Coperto	                                                   Note
+--------------------------------------------------------------------------------------------------------------------------------------------
+Libro (CRUD + search)	        ✅ Create · Read · Update · filtro title/author/genre
+                                ✅ Delete hard & soft	                                      soft-delete flag deleted + hard-delete OK
+--------------------------------------------------------------------------------------------------------------------------------------------
+Hold (CRUD + filtri)            ✅ Create · Read · search by status/author                    ❌ flow Update/Cancel/Expire ancora da coprire
+--------------------------------------------------------------------------------------------------------------------------------------------
+Order flow                      ✅ Create → Cancel (204) → Mark-paid (409 se CANCELLED)       ❌ Mark-paid “happy path” (CREATED → PAID)
+                                                                                               ❌ controllo & decremento stock
+--------------------------------------------------------------------------------------------------------------------------------------------
+Migrazioni DB	                 ✅ V10 sequenza ordini
+                                ✅ V11 fix autori
+                                ✅ V14 soft-delete flag                                      prossima: trigger stock
+--------------------------------------------------------------------------------------------------------------------------------------------
+Regression script	              ✅ all_tests.sh green	                                      export JUnit/HTML per CI - TODO
+--------------------------------------------------------------------------------------------------------------------------------------------
+Legacy alias	                 ✅ /books & /holds find-by-… auto-testate                    -
 
 
+| Script                         | Obiettivo                | Stato  
+| ------------------------------ | ------------------------ | -----  
+| `regression_test.sh`           | CRUD completo + ordini   | ✅    |
+| `regression_test-old.sh`       | alias HAL “find-by-\*”   | ✅    |
+| `concurrency_rest_conflict.sh` | optimistic-locking (409) | ✅    |
+| `soft_hard_delete_demo.sh`     | soft / hard delete demo  | ✅    |
+| `all_tests.sh`                 | orchestra tutte le suite | ✅    |
 
 
+                                               📌 Prossimi step (ordinati per impatto su funzionalità di business)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+⚙️	   Attività	                                                                    
+1      Soft-delete → cascade Hold
+       • quando Book.deleted = true ⇒ nuove hold vietate.✅OK
+       • update automatico delle hold “PLACED” su quel libro → status=CANCELLED (o “BOOK_REMOVED”).✅OK
+       • test REST: DELETE/soft libro con hold attive ⇒ hold non prenotabili + rimangono nella ricerca storico.✅OK
+
+       Output atteso
+       ❶ Listener in service o @EntityListener
+       ❷ integrazione nei test soft_hard_delete_demo.sh
+
+       Dipendenze:
+       flag deleted già disponibile
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+2     Attività
+      Pagination & filtri combinati su /holds
+      GET /holds?title=&author=&status=&pickupBranch=&page=&size= + header X-Total-Count.       
+
+      Output atteso
+      ❶ nuova query custom (Spring Data @Query + Pageable)
+      ❷ script bash che richiama più pagine e verifica conteggi
+      
+      Dipendenze:
+      richiede eventuali indici
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+3     Attività
+      Edge-cases (valida business rules)
+      • ordine quantity > stock → 409 / 422.
+      • doppia hold stesso patron/libro → 409.
+      • ISBN non valido → 400 (già validato, serve test).
+
+      Output atteso
+      3 test JUnit 5 + 1 script curl
+
+      Dipendenze:
+      prezzo/stock presenti
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+4    Attività
+     Ordini – percorso “happy-path”
+     • PUT /orders/{id}/mark-paid?gatewayRef= su ordine CREATED → 204 e status=PAID.
+     • Trigger DB (o service) che decrementa stockQuantity e blocca stockQuantity < 0.
+     • migrazione Flyway V15 con trigger funzione PL/pgSQL.
+
+     Output atteso
+     ❶ OrderService update
+     ❷ V15 trigger
+     ❸ test di integrazione + script curl
+
+     Dipendenze:
+     dipende da stock check (edge-case 3)
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+5   Attività
+    Export report di test per CI
+    Convertire output bash/JUnit in artefatti HTML (Surefire + Allure / Maven Site)
+
+    Output atteso
+    pipeline CI con badge & report
+    
+    Dipendenze:
+    scripts stabili   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+🔜 Proposta d’attacco sprint
+Implementare cascade hold + test (sblocca regole loan e tiene coerenza).
+Integrare pagination (necessario per front-end).
+Edge cases + trigger stock (blinda integrità).
+Happy-path pagamento (chiude loop Ecommerce).
+CI reporting (qualità codice).
+Così manteniamo crescita incrementale senza rompere la suite esistente.
 
 
+*************************************************************************************************************************************
+******************************************************  13/06/2025  ****************************************************************
+*************************************************************************************************************************************
+📋 Stato attuale e prossimo micro-backlog:
+Macro-task	                              Implementato	         Verificato	       Note
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+Soft-delete » nuove Hold vietate          ✅	                   ✅                 HoldController#createHold ora restituisce 409 se il libro è deleted=true.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+Soft-delete » Hold PLACED ⇒ CANCELLED	  ✅                     ✅                  Entrambe le sotto-regole verificate:
+(Soft-delete → cascade Hold)                                                         1️⃣ POST su libro deleted=true ⇒ 409
+                                                                                     2️⃣ Trigger PLACED → CANCELLED testato.                                                     
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+Soft-delete » Hold storiche 
+visibili in ricerche                      ✅	                  ⚠️ da testare       @Where su Book filtra solo i libri, non le hold: 
+                                                                                     le righe restano interrogabili.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+Edge-case extra (ISBN, doppia hold, …)	   ➖	                   ➖	                Da scriptare.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+Order → PAID ⇒ stock-1	                 ➖	                   ➖	               Servizio/trigger da implementare.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+*************************************************************************************************************************************
+******************************************************  15/06/2025  ****************************************************************
+*************************************************************************************************************************************
+
+| Step  | Attività                                  | Stato                                                                    ------------------------------------------------------------------------------------------------------------------------------------|
+| **1** | Soft-delete → cascade Hold  
+Note:                                               | ✅ **Completato**                
+Trigger di cancellazione attivo. Le `HOLD` collegate a `BOOK.deleted=true` sono aggiornate in `CANCELLED`. Il demo script ha validato con successo lo scenario |
+------------------------------------------------------------------------------------------------------------------------------------|
+
+| **2** | Pagination & filtri combinati su `/holds` | ⏳ **Da fare**                   
+Note:
+Richiede implementazione di query custom con `Pageable`, e test multi-pagina  
+------------------------------------------------------------------------------------------------------------------------------------|
+| **3** | Edge-cases validazione business           | 🔜 **Prossimo step suggerito** 
+Note: 
+Critico per robustezza. Test JUnit da implementare per `quantity > stock`, `doppia hold`, ISBN non valido                                                      
+------------------------------------------------------------------------------------------------------------------------------------|
+| **4** | Ordini – percorso happy-path              | ⏳ **Da fare**                  
+Note: 
+Richiede completamento edge-case 3 prima di procedere con logica `mark-paid` e decremento stock                                                                |
+------------------------------------------------------------------------------------------------------------------------------------|
+| **5** | Export test CI pipeline (report HTML)     | ⏳ **Posticipato**              
+Note: 
+Da affrontare una volta che gli script e i test sono stabilizzati                                                                                              |
+------------------------------------------------------------------------------------------------------------------------------------|
 
 
+🔧 Azioni da fare subito
+------------------------------------------------------------------------------------------------------------------------------------|
+✅ Considerare history_demo.sh superato, ma segnalare come test non deterministico per ora.
+🔜 Procedere con la scrittura dei test edge-case (Step 3) per consolidare la coerenza dei dati e proteggere dalle 500 causate da errori noti.
+🛠 In parallelo: valutare nel BookService la gestione manuale della duplicazione ISBN per evitare 500 anche in produzione.
 
 
+------------------------------------------------------------------------------------------------------------------------------------|
+🎯 Proposta di roadmap a breve termine:
 
 
+🔹 Step 1: Edge-case di business logic (prioritario)
+------------------------------------------------------------------------------------------------------------------------------------|
+ Aggiungere test JUnit:
+❗ POST /orders con quantità > stock → aspettarsi 409/422
+❗ POST /holds doppia prenotazione stesso patronId + bibId → 409
+❗ POST /books con ISBN non valido (formato) → 400
+ Scrivere uno script edge_cases_demo.sh per test manuale e CI
 
+ 🔹 Step 2: Pagination + filtri GET /holds
+ ------------------------------------------------------------------------------------------------------------------------------------
+ Aggiungere metodo HoldRepository.findByAdvancedSearch(...) con @Query
+ Agganciare paginazione via Pageable a HoldController
+ Implementare header X-Total-Count per supporto frontend
+ Scrivere script holds_pagination_test.sh per simulare pagine successive
 
+🔹 Step 3: Ordini “happy-path”
+------------------------------------------------------------------------------------------------------------------------------------|
+ Estendere OrderController con:
+PUT /orders/{id}/mark-paid?gatewayRef=...
+@Transactional decremento stock solo se stock ≥ quantity
+ Creare trigger PostgreSQL (Flyway V17__decrement_stock_trigger.sql)
+ Test con ordine che esaurisce stock
 
+************************************************************************************************************************************
+******************************************************  17/06/2025  ****************************************************************
+************************************************************************************************************************************
+✅ 📋 Riepilogo attività svolte oggi
+Sessione di test manuale completa sul servizio REST /books, verificando il comportamento di:
+Creazione libro (POST)
+Lettura libro creato (GET)
+Update con versione corretta (PUT)
+Tentativi di update con versioni obsolete
+Soft-delete e conseguente comportamento del sistema
+Hard-delete e successivo reinserimento
+Validazione vincoli su ISBN
 
+📊 Risultato complessivo dei test:
 
+Test	Esito	Note principali
+POST libro	                  ✅	Corretto
+GET libro	                  ✅	Corretto
+PUT con versione corretta	   ✅	Corretto, versionamento incrementale funzionante
+PUT con versione obsoleta	   ✅	Corretto
+PUT successivo con versione	✅	Comportamento coerente, ma OCC ancora aggirabile
+Soft-delete	                  ✅	Funziona come atteso
+POST dopo soft-delete	      ⚠️	Bloccato da vincolo su ISBN
+Hard-delete + nuovo POST	   ✅	Funziona, nuovo ID generato correttamente
+
+🚧 Punto della situazione
+Abbiamo individuato 3 punti critici da risolvere nel prossimo step di sviluppo.
+
+⚠️ Criticità 1 – PUT con versione obsoleta accettata
+Diagnosi: uso di save() su oggetto non "managed" → OCC (@Version) non scatta.✅ Completato
+
+Obiettivo: recuperare entità gestita con findById, verificare version, aggiornare manualmente i campi, lanciare eccezione su mismatch.✅ Completato
+
+⚠️ Criticità 2 – Retry con versione obsoleta ancora accettato✅ Completato
+Diagnosi: come sopra. Il fatto che il versionamento continui a incrementare mostra che la logica OCC è bypassata o non attivata.✅ Risolto
+
+⚠️ Criticità 3 – POST su ISBN soft-deleted produce 409
+Diagnosi: il vincolo UNIQUE su ISBN blocca la creazione anche se deleted = true.
+
+Obiettivo: permettere reinserimento di un libro soft-deleted (se desiderato), con logica che consideri solo deleted = false per i vincoli di unicità ISBN.
+--------------------------------------------------------------------------------------------------
+🔜 Prossimi step (📌 TODO tecnico)
+✅ Definito oggi, da iniziare nel prossimo ciclo di sviluppo:
+
+1) Fix del metodo updateBook()
+❷ Recupero entità gestita con findById(...)                 ✅ Completato
+❷ Verifica di version                                       ✅ Completato
+❷ Uso di mapper updateEntityFromDto(...) con @MappingTarget ✅ Completato
+❷ Lancio di OptimisticLockException in caso di mismatch     ✅ Completato
+--------------------------------------------------------------------------------------------------
+Test	Esito	Note principali
+POST libro	                                                ✅	Corretto
+GET libro	                                                ✅	Corretto
+PUT con versione corretta	                                 ✅	Corretto, versionamento incrementale funzionante
+PUT con versione obsoleta	                                 ✅	Corretto
+PUT successivo con versione	                              ✅	Comportamento coerente, ma OCC ancora aggirabile
+Soft-delete	                                                ✅	Funziona come atteso
+Test JUnit / MockMvc su edge-case OCC                       ✅	Funziona come atteso
+--------------------------------------------------------------------------------------------------
+
+2) Verifica/aggiunta annotazione @Version su Book.version
+
+3) Aggiornamento logica POST per ISBN
+❷ Opzione 1: refactoring vincolo DB (es. UNIQUE (isbn, deleted) o partial index PostgreSQL)
+❷ Opzione 2: gestione manuale in service con existsByIsbnAndDeletedFalse(...)
+
+4) Test JUnit / MockMvc su edge-case OCC ⚠️ In corso
+
+5) Aggiornamento README (o doc tecnica) con:
+❷ Comportamento OCC atteso
+❷ Soft-delete vs hard-delete
+❷ Gestione ISBN in caso di duplicati soft-deleted
 
 

@@ -22,13 +22,12 @@ public class BookMapper {
         dto.setAuthor(book.getAuthor());
         dto.setGenre(book.getGenre());
         dto.setPublicationYear(book.getPublicationYear());
-        dto.setIsbn(book.getIsbn());
+        dto.setIsbn(book.getIsbn());  // 13 cifre
 
         // campi Book-shop
         dto.setPrice(book.getPrice());
         dto.setStockQuantity(book.getStockQuantity());
         dto.setVersion(book.getVersion());
-
         return dto;
     }
 
@@ -50,6 +49,7 @@ public class BookMapper {
         book.setPrice(dto.getPrice());
         book.setStockQuantity(dto.getStockQuantity());
         book.setVersion(dto.getVersion());
+        book.setDeleted(dto.getDeleted() != null ? dto.getDeleted() : false); // fallback
 
         return book;
     }
@@ -73,5 +73,6 @@ public class BookMapper {
         target.setIsbn(source.getIsbn());
         target.setPrice(source.getPrice());
         target.setStockQuantity(source.getStockQuantity());
+        target.setDeleted(source.getDeleted() != null ? source.getDeleted() : false); // ✅ AGGIUNTA
     }
 }

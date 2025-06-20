@@ -20,43 +20,57 @@ import java.util.UUID;
 @RepositoryRestResource(path = "books", collectionResourceRel = "books")
 public interface BookRepository extends JpaRepository<Book, UUID> {
 
-    /*
-     * ────────────────────────────────────────────────────────────── *
-     * ALIAS «LEGACY» – riconducono ai metodi già esistenti, *
-     * nessuna logica duplicata, cambia soltanto il path esposto. *
-     * ──────────────────────────────────────────────────────────────
-     */
+  /*
+   * ────────────────────────────────────────────────────────────── *
+   * ALIAS «LEGACY» – riconducono ai metodi già esistenti, *
+   * nessuna logica duplicata, cambia soltanto il path esposto. *
+   * ──────────────────────────────────────────────────────────────
+   */
 
-    @RestResource(path = "find-by-title", rel = "find-by-title")
-    List<Book> findByTitleContainingIgnoreCase(@Param("title") String title);
+  @RestResource(path = "find-by-title", rel = "find-by-title")
+  List<Book> findByTitleContainingIgnoreCase(@Param("title") String title);
 
-    @RestResource(path = "find-by-author", rel = "find-by-author")
-    List<Book> findByAuthorContainingIgnoreCase(@Param("author") String author);
+  @RestResource(path = "find-by-author", rel = "find-by-author")
+  List<Book> findByAuthorContainingIgnoreCase(@Param("author") String author);
 
-    @RestResource(path = "find-by-genre", rel = "find-by-genre")
-    List<Book> findByGenreContainingIgnoreCase(@Param("genre") String genre);
+  @RestResource(path = "find-by-genre", rel = "find-by-genre")
+  List<Book> findByGenreContainingIgnoreCase(@Param("genre") String genre);
 
-    /* hard-delete nativo: ignora qualsiasi filtro @Where */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(value = "DELETE FROM books WHERE id = :id", nativeQuery = true)
-    int hardDeleteByIdNative(@Param("id") UUID id);
+  /* hard-delete nativo: ignora qualsiasi filtro @Where */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(value = "DELETE FROM books WHERE id = :id", nativeQuery = true)
+  int hardDeleteByIdNative(@Param("id") UUID id);
 
-    /* endpoint HAL già esistente – lasciato com’è */
-    List<Book> findByIsbn(String isbn);
+  // ➊ nuovo helper per leggere il flag deleted ignorando l’annotazione @Where
+  @Query(value = "SELECT deleted FROM books WHERE id = :id", nativeQuery = true)
+  Boolean findDeletedFlagById(@Param("id") UUID id);
 
-    /* 🔍 Ricerca con filtri combinabili opzionali. */
-    @Query("""
-                SELECT b FROM Book b
-                WHERE (:title IS NULL  OR b.title  ILIKE CONCAT('%', CAST(:title  AS string), '%'))
-                  AND (:author IS NULL OR b.author ILIKE CONCAT('%', CAST(:author AS string), '%'))
-                  AND (:genre IS NULL  OR b.genre  ILIKE CONCAT('%', CAST(:genre  AS string), '%'))
-                  AND (:isbn IS NULL   OR b.isbn  = :isbn)
-                  AND (:publicationYear IS NULL OR b.publicationYear = :publicationYear)
-            """)
-    List<Book> searchByOptionalFilters(
-            @Param("title") String title,
-            @Param("author") String author,
-            @Param("genre") String genre,
-            @Param("isbn") String isbn,
-            @Param("publicationYear") Integer publicationYear);
+  /* true se esiste un libro attivo (deleted = false) con lo stesso ISBN */
+  boolean existsByIsbnAndDeletedFalse(String isbn);
+
+  // …altri metodi
+
+  /* endpoint HAL già esistente – lasciato com’è */
+  List<Book> findByIsbn(String isbn);
+
+  /**
+   * Verifica se esiste già un libro con lo stesso ISBN
+   */
+  boolean existsByIsbn(String isbn);
+
+  /* 🔍 Ricerca con filtri combinabili opzionali. */
+  @Query("""
+          SELECT b FROM Book b
+          WHERE (:title IS NULL  OR b.title  ILIKE CONCAT('%', CAST(:title  AS string), '%'))
+            AND (:author IS NULL OR b.author ILIKE CONCAT('%', CAST(:author AS string), '%'))
+            AND (:genre IS NULL  OR b.genre  ILIKE CONCAT('%', CAST(:genre  AS string), '%'))
+            AND (:isbn IS NULL   OR b.isbn  = :isbn)
+            AND (:publicationYear IS NULL OR b.publicationYear = :publicationYear)
+      """)
+  List<Book> searchByOptionalFilters(
+      @Param("title") String title,
+      @Param("author") String author,
+      @Param("genre") String genre,
+      @Param("isbn") String isbn,
+      @Param("publicationYear") Integer publicationYear);
 }

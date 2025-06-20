@@ -4,30 +4,25 @@ import it.comune.library.reservation.domain.Hold;
 import it.comune.library.reservation.domain.HoldStatus;
 import it.comune.library.reservation.repository.HoldRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
-@RequestMapping(path = "/holds", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class HoldSearchController {
 
     private final HoldRepository repo;
 
     /**
-     * GET /holds?title=&author=&pickupBranch=&status=&genre=…
-     * Compatibilità con i vecchi test.
+     * GET /holds?title=&author=&pickupBranch=&status=&genre=&publicationYear=&position=
+     * (compatibilità con i vecchi test di ricerca)
      */
-    @GetMapping(params = {
-            "title",
-            "author",
-            "pickupBranch",
-            "status",
-            "genre",
-            "publicationYear",
-            "position"
+    @GetMapping(value = "/holds", params = {
+            "title", "author", "pickupBranch",
+            "status", "genre", "publicationYear", "position"
     })
     public List<Hold> search(
             @RequestParam(required = false) String title,
@@ -39,7 +34,8 @@ public class HoldSearchController {
             @RequestParam(required = false) Integer position
     ) {
         return repo.searchByOptionalFilters(
-                title, author, pickupBranch, status, genre, publicationYear, position
+                title, author, pickupBranch,
+                status, genre, publicationYear, position
         );
     }
 }

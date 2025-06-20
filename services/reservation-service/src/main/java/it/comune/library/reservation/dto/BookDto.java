@@ -27,13 +27,16 @@ public class BookDto {
 
     @Schema(description = "Codice ISBN", example = "9788807900386")
     private String isbn;
-    
+
     @Schema(description = "Prezzo di vendita in EUR", example = "14.99")
-    private BigDecimal price;          // ✅ nuovo
+    private BigDecimal price; // ✅ nuovo
 
     @Schema(description = "Copie disponibili alla vendita", example = "5")
-    private Integer stockQuantity;  // ✅ nuovo
+    private Integer stockQuantity; // ✅ nuovo
 
     @Schema(description = "Versione ottimistic locking")
     private Integer version;
+
+    @Schema(description = "Flag di soft-delete", hidden = true)
+    private Boolean deleted = false;
 }

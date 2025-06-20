@@ -1,0 +1,6 @@
+ALTER TABLE books
+ALTER COLUMN deleted SET DEFAULT FALSE;
+
+UPDATE books
+SET deleted = FALSE
+WHERE deleted IS NULL;
