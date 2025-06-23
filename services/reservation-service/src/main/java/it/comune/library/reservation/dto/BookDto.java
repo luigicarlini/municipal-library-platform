@@ -1,6 +1,7 @@
 package it.comune.library.reservation.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import it.comune.library.reservation.validation.ISBN;   // 👈 import NUOVO
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -25,16 +26,18 @@ public class BookDto {
     @Schema(description = "Anno di pubblicazione", example = "1813")
     private Integer publicationYear;
 
+    /* ---------- VALIDAZIONE ISBN ---------- */
+    @ISBN                                                     // 👈 aggiunto
     @Schema(description = "Codice ISBN", example = "9788807900386")
     private String isbn;
 
     @Schema(description = "Prezzo di vendita in EUR", example = "14.99")
-    private BigDecimal price; // ✅ nuovo
+    private BigDecimal price;
 
     @Schema(description = "Copie disponibili alla vendita", example = "5")
-    private Integer stockQuantity; // ✅ nuovo
+    private Integer stockQuantity;
 
-    @Schema(description = "Versione ottimistic locking")
+    @Schema(description = "Versione optimistic locking")
     private Integer version;
 
     @Schema(description = "Flag di soft-delete", hidden = true)

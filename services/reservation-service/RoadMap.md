@@ -374,55 +374,55 @@ Legacy alias	                 ✅ /books & /holds find-by-… auto-testate      
 
                                                📌 Prossimi step (ordinati per impatto su funzionalità di business)
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
-⚙️	   Attività	                                                                    
+⚙️	   Attività	 ✅OK  (20/06/2025)                                                                 
 1      Soft-delete → cascade Hold
-       • quando Book.deleted = true ⇒ nuove hold vietate.✅OK
-       • update automatico delle hold “PLACED” su quel libro → status=CANCELLED (o “BOOK_REMOVED”).✅OK
-       • test REST: DELETE/soft libro con hold attive ⇒ hold non prenotabili + rimangono nella ricerca storico.✅OK
+       • quando Book.deleted = true ⇒ nuove hold vietate.
+       • update automatico delle hold “PLACED” su quel libro → status=CANCELLED (o “BOOK_REMOVED”).
+       • test REST: DELETE/soft libro con hold attive ⇒ hold non prenotabili + rimangono nella ricerca storico.
 
-       Output atteso
+       Output atteso✅OK
        ❶ Listener in service o @EntityListener
        ❷ integrazione nei test soft_hard_delete_demo.sh
 
        Dipendenze:
-       flag deleted già disponibile
+       flag deleted già disponibile✅OK
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
-2     Attività
+2     Attività ✅OK
       Pagination & filtri combinati su /holds
       GET /holds?title=&author=&status=&pickupBranch=&page=&size= + header X-Total-Count.       
 
-      Output atteso
+      Output atteso✅OK
       ❶ nuova query custom (Spring Data @Query + Pageable)
       ❷ script bash che richiama più pagine e verifica conteggi
       
-      Dipendenze:
+      Dipendenze:✅OK
       richiede eventuali indici
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
-3     Attività
+3     Attività✅
       Edge-cases (valida business rules)
       • ordine quantity > stock → 409 / 422.
       • doppia hold stesso patron/libro → 409.
       • ISBN non valido → 400 (già validato, serve test).
 
-      Output atteso
+      Output atteso✅
       3 test JUnit 5 + 1 script curl
 
-      Dipendenze:
+      Dipendenze:✅
       prezzo/stock presenti
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
-4    Attività
+4    Attività✅
      Ordini – percorso “happy-path”
      • PUT /orders/{id}/mark-paid?gatewayRef= su ordine CREATED → 204 e status=PAID.
      • Trigger DB (o service) che decrementa stockQuantity e blocca stockQuantity < 0.
      • migrazione Flyway V15 con trigger funzione PL/pgSQL.
 
-     Output atteso
+     Output atteso✅
      ❶ OrderService update
      ❷ V15 trigger
      ❸ test di integrazione + script curl
 
-     Dipendenze:
+     Dipendenze:✅
      dipende da stock check (edge-case 3)
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -436,7 +436,7 @@ Legacy alias	                 ✅ /books & /holds find-by-… auto-testate      
     Dipendenze:
     scripts stabili   
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
-🔜 Proposta d’attacco sprint
+🔜 Proposta d’attacco sprint✅
 Implementare cascade hold + test (sblocca regole loan e tiene coerenza).
 Integrare pagination (necessario per front-end).
 Edge cases + trigger stock (blinda integrità).
@@ -602,3 +602,235 @@ Test JUnit / MockMvc su edge-case OCC                       ✅	Funziona come at
 ❷ Gestione ISBN in caso di duplicati soft-deleted
 
 
+************************************************************************************************************************************
+******************************************************  20/06/2025  ****************************************************************
+************************************************************************************************************************************
+🟢 Edge-Case Test Suite – Report
+------------------------------------------------------------------------------------------------------------------------------------
+Test class	                   Scenario verificato	                           Esito	 Note tecniche
+------------------------------------------------------------------------------------------------------------------------------------
+BookControllerConcurrencyTest	 Optimistic Lock: due client leggono 
+                               la stessa versione primo PUT OK, secondo 409	✅ 	   OCC via @Version + handler 409
+------------------------------------------------------------------------------------------------------------------------------------
+DuplicateHoldTest	             Duplicate Hold: 
+                               stesso patron + stesso libro → 409	            ✅  	check dup nella service-layer, Retrofit test su H2
+------------------------------------------------------------------------------------------------------------------------------------
+InsufficientStockTest	       quantity > stock all’atto dell’ordine → 409	   ✅   	nuova InsufficientStockException + Advice handler
+------------------------------------------------------------------------------------------------------------------------------------
+IsbnValidationTest	          ISBN non valido a livello DTO → 400	         ✅     annotazione @ISBN su BookDto, fallisce @Valid
+------------------------------------------------------------------------------------------------------------------------------------
+
+Prossimi macro-task disponibili:
+------------------------------------------------------------------------------------------------------------------------------------
+📌 TODO immediato:
+------------------------------------------------------------------------------------------------------------------------------------
+Step	                    Descrizione	                                                Output chiave
+A	                       Happy-path pagamento ordine (PUT /orders/{id}/mark-paid) 
+                          con decremento stock & trigger Flyway V21 
+                                                                                       • Logica OrderService.markPaid con lock pessimista
+                                                                                       • Migrazione V21__decrement_stock_trigger.sql
+                                                                                       • Test integrazione MarkPaidHappyPathTest
+
+------------------------------------------------------------------------------------------------------------------------------------
+🟢 MarkPaidHappyPathTest completato con successo:
+tutti gli integration-test, compreso il nuovo flusso PAID + decremento stock, ora sono verdi.
+------------------------------------------------------------------------------------------------------------------------------------
+Suite	                                          Tool	           Status
+Edge-case (H2)	                                 MockMvc	        ✅
+Happy-path pagamento (Postgres Testcontainers)	MockMvc	        ✅
+Trigger V21 applicato, stock scalato correttamente, driver & container configurati.
+
+✅ MarkPaidHappyPathTest — Report di esecuzione
+Passo	Operazione	                                   Esito
+1	Avvio PostgreSQL Testcontainers 15-alpine	        Container up in ~3 s✅
+2	POST /books → crea libro con stock = 5	           201 Created         ✅
+3	POST /orders → crea ordine CREATED, qty = 1	     201 Created         ✅
+4	PUT /orders/{id}/mark-paid?gatewayRef=PAY-OK	     204 No Content      ✅
+5	GET /orders/{id} → verifica stato	              PAID                ✅
+6	GET /books/{id} → verifica scorte	              stock = 4           ✅
+
+Tecnologia usata
+Spring Boot 3.3 + MockMvc
+Testcontainers Postgres (JDBC URL propagato via DynamicPropertyRegistry)
+Hibernate ddl-auto=create (Flyway disabilitato nel test)
+Lock pessimista + servizio OrderService.markPaid
+Trigger DB V21 già applicato a livello produzione (non attivo nel test veloce)
+------------------------------------------------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------------------------------------------------
+📌 TODO immediato:
+------------------------------------------------------------------------------------------------------------------------------------
+Procediamo con la seguente attività:
+- Paginazione & filtri combinati su /holds
+- JPQL con Pageable, header X-Total-Count, script di verifica.
+
+
+Paginate & Filter — /holds (step-by-step implementation)
+Below is a drop-in patch that adds:
+
+- JPQL + Pageable for the combined search
+- X-Total-Count response header
+- Bash verification script (holds_pagination_test.sh)
+- Everything compiles with Spring Boot 3.3 and preserves existing endpoints.
+------------------------------------------------------------------------------------------------------------------------------------
+📈 Report attività “Paginazione & filtri combinati su /holds”
+------------------------------------------------------------------------------------------------------------------------------------
+Obiettivo	           Output chiave	                              Stato
+JPQL paginata	        HoldRepository.searchPaged(…, Pageable)	      ✅
+Endpoint REST	        /holds?page=&size=&title=…&author=…
+                       • header X-Total-Count
+                       • default page=0, size=20	                  ✅
+Swagger/OpenAPI	     Parametri page, size documentati con esempi	✅
+Test MockMvc	        HoldPaginationTest verifica:
+                       • 200 OK - filtro titolo
+                       • X-Total-Count = 1
+                       • array JSON length = 1	                     ✅
+Build	Tutta la suite edge-case green (H2) + integrazione Postgres	   🟢 BUILD SUCCESS
+Impatto funzionale
+
+Il frontend può ora richiedere porzioni di lista con conteggio totale immediato.
+Query performante grazie a PageRequest (limita OFFSET) e filtri combinati.
+Compatibilità mantenuta: endpoint legacy e ricerca non paginata invariati.
+Tempo medio risposta (test H2, size = 20): ~12 ms.
+Conclusione: la feature di paginazione avanzata su /holds è implementata, documentata e coperta da test automatici.
+------------------------------------------------------------------------------------------------------------------------------------
+Verifica copertura — Edge-cases (task 3) e Happy-path ordine (task 4)
+Task	Requisito	Evidenza	Coperto
+3.1	quantity > stock → 409/422	            InsufficientStockException + test InsufficientStockTest (MockMvc/H2) ⇒ 409 CONFLICT	✅
+3.2	Doppia hold stesso patron/libro → 409	Test DuplicateHoldTest (MockMvc/H2) ⇒ 409 CONFLICT	                                 ✅
+3.3	ISBN non valido → 400	               Test parametrico IsbnValidationTest ⇒ 400 BAD_REQUEST	                              ✅
+3.4	Script cURL dimostrativo	            insufficient_stock_demo.sh (aggiunto: curl flow con 409)	                            ✅
+4.1	PUT /orders/{id}/mark-paid ⇒ 204 & status = PAID	Metodo OrderService.markPaid aggiornato (lock pessimista + stock check)	✅
+4.2	Decremento stock_quantity	            <ul><li>Service layer (check & update)</li><li>Trigger
+                                             DB V21__decrement_stock_trigger.sql (Flyway) – ultima                                       
+                                             linea di difesa</li></ul>	                                                          ✅
+4.3	Migrazione Flyway	V21 applicata → orders_decrement_stock trigger attivo in prod	                                           ✅
+4.4	Test integrazione happy-path + cURL	MarkPaidHappyPathTest (MockMvc + Postgres Testcontainers) – stock 5→4, 204 OK	          ✅
+------------------------------------------------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------------------------------------------------
+📌 TODO immediato:
+------------------------------------------------------------------------------------------------------------------------------------
+Ordinamento (sort) su /holds e /books (optional).
+Test di concorrenza multi-ordine (race condition su stock).
+CI reporting (Surefire + Allure).
+Indice parziale su holds (status, pickup_branch) per query veloci.
+
+RoadMap a breve Termine:
+----------------------------------------------------------------------------------------------------------------------------------
+1.  Bookshop e Pagamenti
+----------------------------------------------------------------------------------------------------------------------------------
+- Estensione del dominio Book con prezzo, quantità disponibile, ISBN valido per vendita
+- Creazione entità Order e DTO correlato
+- Implementazione endpoint POST /orders (acquisto libro)
+- Logica pagamento (mock iniziale, poi gateway reale: Stripe, PayPal, bonifico)====> da implementare
+- Validazione stock, prevenzione ordini multipli se non disponibili====> da implementare
+- Documentazione Swagger/OpenAPI per nuovi endpoint orders
+🧪 Test con MockMvc	Integrazione SpringBootTest, WebMvcTest per validare i flussi REST
+----------------------------------------------------------------------------------------------------------------------------------
+2. Test di Integrazione REST con MockMvc
+----------------------------------------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------------------------------------------------------------
+3. Refactoring e Ottimizzazione
+----------------------------------------------------------------------------------------------------------------------------------
+Rivedere la struttura e l'architettura del codice per migliorare la leggibilità e la manutenzione.
+Eventuali miglioramenti delle performance, soprattutto nei filtri avanzati, per garantire che le ricerche siano efficienti su grandi volumi di dati.
+
+----------------------------------------------------------------------------------------------------------------------------------
+4. Aggiunta di nuove funzionalità
+----------------------------------------------------------------------------------------------------------------------------------
+Implementare funzionalità aggiuntive, come la gestione dei dueDates per la restituzione dei libri, eventuale supporto per più lingue, ecc.
+Monitoraggio e logging per garantire la tracciabilità delle operazioni.
+Logica pagamento (mock iniziale, poi gateway reale: Stripe, PayPal, bonifico)
+
+----------------------------------------------------------------------------------------------------------------------------------
+5. Test di carico e stress
+----------------------------------------------------------------------------------------------------------------------------------
+Esegui dei test per simulare l'uso in scenari di produzione, verificando che il sistema gestisca correttamente il carico previsto.
+
+----------------------------------------------------------------------------------------------------------------------------------
+6. Refactoring del codice (opzionale)
+----------------------------------------------------------------------------------------------------------------------------------
+Considerare un refactoring per migliorare la leggibilità o l'estensibilità del codice, includendo il miglioramento della gestione delle eccezioni 
+e la gestione centralizzata dei messaggi di errore.
+
+
+
+**Roadmap futura a lungo termine:
+----------------------------------------------------------------------------------------------------------------------------------
+1. Gestione degli utenti e autenticazione (user-service per gestione utenti/log-in)
+----------------------------------------------------------------------------------------------------------------------------------
+Potresti considerare l'aggiunta di un sistema di autenticazione/gestione utenti (JWT, OAuth2) con diversi livelli di autenticazione (Admin, normal User) 
+per gestire l'accesso ai servizi, soprattutto se si prevede una crescita del sistema.
+🔐 Sicurezza base (Auth stub)	Simulazione login utente base (anche se solo a livello mock iniziale)
+payment-service per iscrizione a corsi o multate
+notification-service (eventuale per mail/sms)
+
+2. Microservizi e distribuzione
+----------------------------------------------------------------------------------------------------------------------------------
+Separazione in microservizi per ciascun modulo (prenotazione, libri, utenti) con l'uso di un API Gateway, eventualmente implementando il pattern di Event-Driven Architecture (Kafka, RabbitMQ).
+
+3. – Frontend (interfaccia utente)
+🎨 Scaffolding Next.js/React	   Setup iniziale progetto web utente (registrazione/login, dashboard)	
+🧭 API Integration	            Collegamento ai REST del reservation-service tramite Axios o simili
+📲 UI/UX Utente finale	         Prenotazione/Acquisto libro, visualizzazione stato, annullamento
+🔐 Auth+Ruoli	                  Gestione differenziata utente/admin (anche se semplificata inizialmente)
+
+
+➡ Il Frontend sarà tra gli ultimi macro-step, ma va preparato con anticipo a livello di design funzionale. 
+Possiamo parallelizzare alcune fasi (es. layout + auth stub mentre si scrivono i test backend).
+
+
+
+************************************************************************************************************************************
+******************************************************  21/06/2025  ****************************************************************
+************************************************************************************************************************************
+Test class	         Scopo	                               Copertura logica principale	                                   Esito
+----------------------------------------------------------------------------------------------------------------------------------
+OrderConcurrencyTest	Simula 20 thread concorrenti che:                                                                   ✅Passed
+                     1) creano ordini, 
+                     2) marcano il pagamento.
+                     Verifica race-condition su stock.	• Solo 5 “mark-paid” ottengono 204 (stock esaurito)
+                                                         • 15 ottengono 409 (protezione integrità)
+                                                         • Stock a 0	PASS
+
+
+************************************************************************************************************************************
+******************************************************  23/06/2025  ****************************************************************
+************************************************************************************************************************************
+📅 Sprint Log – Giornata del 23 giugno 2025
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+#	Area	                                            Attività	                                   Esito
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+1  Book API	• Ricerca paginata & sort
+                                             • Swagger completo 
+                                             (descrizioni, esempi, header X-Total-Count)
+                                             • CRUD con soft-/hard-delete	                       ✅ Funzionante – test manuali & Swagger OK
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+2 Unique ISBN	                              • Rimosso unique=true su colonna
+                                             • Indice ux_books_isbn_active 
+                                               (condizione deleted = false) 
+                                               via V24__isbn_partial_unique.sql	                 ✅ POST accetta ISBN già presenti su record deleted=true
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+3 OrderService	                              • Fix markPaid → update atomico stock + saveAndFlush esplicito
+                                                                                                  ✅ Test MarkPaidHappyPath e OrderConcurrencyTest passano    
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+4	Ottimistic locking                        • Controllo versione manuale in updateBook           ✅ 409 su versioni stantie
+                                             • Test di concorrenza BookControllerConcurrencyTest 
+                                               verde
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+5	Database	                                 • Indice parziale soft-delete
+                                             • Verifica schema (\d+ books)                        ✅ Confermata corretta configurazione index & constraints
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+6	Migrazioni Flyway	                        • V23 indice holds                                   ✅ Migrazioni applicate senza errori
+                                             • V24 indice ISBN condizionale	  
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+7	Test suite	                              • 9 test JUnit5 (MockMvc + concorrenza) verdi        ✅ mvnw clean package ⇒ BUILD SUCCESS
+                                             • Surefire time-to-live configurato per chiusura pulita                                                             
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+8	Manual QA	                              • Checklist CRUD via 
+                                               Swagger / curl (GET, POST, PUT, DELETE soft+hard)
+                                             • Edge case ISBN duplicate dopo soft-delete           ✅ Comportamento atteso
+                                                                                                   🛈 Record soft-deleted visibili solo in audit
+----------------------------------------------------------------------------------------------------------------------------------------------------------                                                                                                   

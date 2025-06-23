@@ -7,10 +7,12 @@ import it.comune.library.reservation.mapper.BookMapper;
 import it.comune.library.reservation.mapper.HoldMapper;
 import it.comune.library.reservation.repository.BookRepository;
 import it.comune.library.reservation.repository.HoldRepository;
+
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,49 +39,34 @@ public class HoldController {
         this.bookRepository  = bookRepository;
     }
 
-    @Operation(summary = "Crea una nuova prenotazione",
-               description = "Crea una Hold, valida l'esistenza del libro e previene duplicati.")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Prenotazione creata con successo"),
-        @ApiResponse(responseCode = "409", description = "Libro non disponibile o prenotazione duplicata")
-    })
+    /*──────────────────────────────────────────────
+     * 1. CREATE
+     *─────────────────────────────────────────────*/
+    @Operation(summary = "Crea una nuova prenotazione")
     @PostMapping
     public ResponseEntity<?> createHold(@RequestBody HoldDto dto) {
-        // → se il libro non è presente (o è soft-deleted) → 409
+
         if (!bookRepository.existsById(dto.getBibId())) {
-            return ResponseEntity.status(409).body(Map.of(
-                "error", "Book not available for bibId: " + dto.getBibId()));
+            return ResponseEntity.status(409).body(
+                Map.of("error", "Book not available for bibId: " + dto.getBibId()));
         }
 
-        // → duplicato di hold
-        Optional<Hold> existing =
-            holdRepository.findByPatronIdAndBibId(dto.getPatronId(), dto.getBibId());
-        if (existing.isPresent()) {
-            return ResponseEntity.status(409).body(Map.of(
-                "error", "Duplicate hold: patron has already requested this book"));
+        if (holdRepository.findByPatronIdAndBibId(dto.getPatronId(), dto.getBibId()).isPresent()) {
+            return ResponseEntity.status(409).body(
+                Map.of("error", "Duplicate hold: patron already requested this book"));
         }
 
-        // mappatura e inizializzazioni
         Hold hold = holdMapper.toEntity(dto);
         hold.setId(UUID.randomUUID());
         hold.setStatus(HoldStatus.PLACED);
+        hold.setPosition(holdRepository.findMaxPositionByBibId(dto.getBibId()) + 1);
 
-        // Calcolo posizione in coda
-        int nextPos = holdRepository.findMaxPositionByBibId(dto.getBibId()) + 1;
-        hold.setPosition(nextPos);
-
-        Hold saved = holdRepository.save(hold);
-        return ResponseEntity.ok(holdMapper.toDto(saved));
+        return ResponseEntity.ok(holdMapper.toDto(holdRepository.save(hold)));
     }
 
     /*──────────────────────────────────────────────
-     * 2.  READ (by ID)
+     * 2. READ
      *─────────────────────────────────────────────*/
-    @Operation(summary = "Recupera una prenotazione tramite ID")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Prenotazione trovata"),
-            @ApiResponse(responseCode = "404", description = "Prenotazione non trovata")
-    })
     @GetMapping("/{id}")
     public ResponseEntity<HoldDto> getHoldById(@PathVariable UUID id) {
         return holdRepository.findById(id)
@@ -88,83 +75,49 @@ public class HoldController {
     }
 
     /*──────────────────────────────────────────────
-     * 3.  UPDATE
+     * 3. UPDATE
      *─────────────────────────────────────────────*/
-    @Operation(summary = "Aggiorna una prenotazione esistente")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Prenotazione aggiornata"),
-            @ApiResponse(responseCode = "404", description = "Prenotazione non trovata"),
-            @ApiResponse(responseCode = "409", description = "Transizione di stato non ammessa")
-    })
     @PutMapping("/{id}")
     public ResponseEntity<?> updateHold(@PathVariable UUID id,
                                         @RequestBody HoldUpdateDto dto) {
 
-        Optional<Hold> optionalHold = holdRepository.findById(id);
-        if (optionalHold.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
+        return holdRepository.findById(id).map(existing -> {
 
-        Hold existing = optionalHold.get();
+            if (existing.getStatus() == HoldStatus.CANCELLED &&
+                dto.getStatus() != HoldStatus.CANCELLED) {
+                return ResponseEntity.status(409).body(
+                    Map.of("error", "Cannot change status from CANCELLED"));
+            }
+            existing.setPickupBranch(dto.getPickupBranch());
+            existing.setStatus(dto.getStatus());
+            existing.setPosition(dto.getPosition());
+            return ResponseEntity.ok(holdMapper.toDto(holdRepository.save(existing)));
 
-        // non si può ri-attivare una prenotazione cancellata
-        if (existing.getStatus() == HoldStatus.CANCELLED
-            && dto.getStatus() != HoldStatus.CANCELLED) {
-            return ResponseEntity.status(409).body(Map.of(
-                    "error", "Cannot change status from CANCELLED to another state"));
-        }
-
-        existing.setPickupBranch(dto.getPickupBranch());
-        existing.setStatus(dto.getStatus());
-        existing.setPosition(dto.getPosition());
-
-        Hold updated = holdRepository.save(existing);
-        return ResponseEntity.ok(holdMapper.toDto(updated));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     /*──────────────────────────────────────────────
-     * 4.  CANCEL (soft-delete)
+     * 4. CANCEL / DELETE
      *─────────────────────────────────────────────*/
-    @Operation(summary = "Cancella logicamente una prenotazione (soft-delete)")
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Prenotazione annullata"),
-            @ApiResponse(responseCode = "404", description = "Prenotazione non trovata")
-    })
     @DeleteMapping("/{id}/cancel")
     public ResponseEntity<Void> cancelHold(@PathVariable UUID id) {
-        Optional<Hold> optionalHold = holdRepository.findById(id);
-        if (optionalHold.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Hold hold = optionalHold.get();
-        hold.setStatus(HoldStatus.CANCELLED);
-        holdRepository.save(hold);
-
-        return ResponseEntity.noContent().build();
+        return holdRepository.findById(id).map(h -> {
+            h.setStatus(HoldStatus.CANCELLED);
+            holdRepository.save(h);
+            return ResponseEntity.noContent().<Void>build();
+        }).orElse(ResponseEntity.notFound().build());
     }
 
-    /*──────────────────────────────────────────────
-     * 5.  DELETE (hard)
-     *─────────────────────────────────────────────*/
-    @Operation(summary = "Elimina definitivamente una prenotazione (hard-delete)")
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Prenotazione eliminata"),
-            @ApiResponse(responseCode = "404", description = "Prenotazione non trovata")
-    })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteHold(@PathVariable UUID id) {
-        if (!holdRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
+        if (!holdRepository.existsById(id)) return ResponseEntity.notFound().build();
         holdRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
     /*──────────────────────────────────────────────
-     * 6.  ALTRI END-POINT (libro associato, ricerca, dettagli…)
+     * 5. BOOK FOR HOLD
      *─────────────────────────────────────────────*/
-
     @GetMapping("/{id}/book")
     public ResponseEntity<BookDto> getBookForHold(@PathVariable UUID id) {
         return holdRepository.findById(id)
@@ -174,8 +127,10 @@ public class HoldController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Ricerca avanzata delle prenotazioni",
-               description = "Filtra per titolo, autore, branch, status, genere, anno, posizione, e — se presenti — bibId+patronId")
+    /*──────────────────────────────────────────────
+     * 6. SEARCH paginata
+     *─────────────────────────────────────────────*/
+    @Operation(summary = "Ricerca avanzata (paginata) delle prenotazioni")
     @GetMapping
     public ResponseEntity<List<HoldDto>> searchHolds(
             @RequestParam(required = false) String     title,
@@ -184,11 +139,13 @@ public class HoldController {
             @RequestParam(required = false) HoldStatus status,
             @RequestParam(required = false) String     genre,
             @RequestParam(required = false) Integer    publicationYear,
-            @RequestParam(required = false) Integer    position,
+            @Parameter(description = "Numero pagina (0-based)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Dimensione pagina", example = "20")
+            @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) UUID       bibId,
             @RequestParam(required = false) UUID       patronId) {
 
-        // compatibilità con regression_test.sh: se passano bibId+patronId
         if (bibId != null && patronId != null) {
             return holdRepository.findByPatronIdAndBibId(patronId, bibId)
                                  .map(h -> List.of(holdMapper.toDto(h)))
@@ -196,35 +153,41 @@ public class HoldController {
                                  .orElse(ResponseEntity.ok(List.of()));
         }
 
-        List<Hold> results = holdRepository.searchByOptionalFilters(
-                title, author, pickupBranch, status, genre, publicationYear, position);
+        var pageable   = PageRequest.of(page, size);
+        var pageResult = holdRepository.searchPaged(
+                title, author, pickupBranch, status, genre, publicationYear, pageable);
 
-        List<HoldDto> dto = results.stream()
-                                   .map(holdMapper::toDto)
-                                   .collect(Collectors.toList());
-        return ResponseEntity.ok(dto);
+        var dto = pageResult.getContent().stream()
+                            .map(holdMapper::toDto)
+                            .collect(Collectors.toList());
+
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(pageResult.getTotalElements()))
+                .body(dto);
     }
 
-    @Operation(summary = "Dettagli completi (Hold + Book)")
+    /*──────────────────────────────────────────────
+     * 7. DETAILS
+     *─────────────────────────────────────────────*/
     @GetMapping("/{id}/details")
     public ResponseEntity<HoldDetailsDto> getHoldDetails(@PathVariable UUID id) {
-        return holdRepository.findByIdWithBook(id)
-                .map(hold -> {
-                    HoldDetailsDto d = new HoldDetailsDto();
-                    d.setHold(holdMapper.toDto(hold));
-                    d.setBook(bookMapper.toDto(hold.getBook()));
-                    return ResponseEntity.ok(d);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return holdRepository.findByIdWithBook(id).map(hold -> {
+            HoldDetailsDto d = new HoldDetailsDto();
+            d.setHold(holdMapper.toDto(hold));
+            d.setBook(bookMapper.toDto(hold.getBook()));
+            return ResponseEntity.ok(d);
+        }).orElse(ResponseEntity.notFound().build());
     }
 
-    /* endpoint legacy */
+    /*──────────────────────────────────────────────
+     * 8. LEGACY alias
+     *─────────────────────────────────────────────*/
     @GetMapping("/search/find-by-title")
     public ResponseEntity<List<HoldDto>> legacyFindByTitle(@RequestParam String title) {
-        var dto = holdRepository.findByBookTitleContainingIgnoreCase(title)
-                                .stream()
-                                .map(holdMapper::toDto)
-                                .toList();
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(
+                holdRepository.findByBookTitleContainingIgnoreCase(title)
+                              .stream()
+                              .map(holdMapper::toDto)
+                              .toList());
     }
 }

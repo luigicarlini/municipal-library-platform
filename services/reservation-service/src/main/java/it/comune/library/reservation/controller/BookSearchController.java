@@ -17,10 +17,9 @@ public class BookSearchController {
 
     /**
      * GET /books?[title=&author=&genre=&isbn=&publicationYear=]
-     * Ritorna l’elenco filtrato dei libri.
      *
-     * Se non viene passato **nessun** parametro, il metodo *non* entra in
-     * competizione con l’handler di Spring-Data-REST (che gestisce la listing).
+     * Se arriva almeno uno dei parametri, il metodo viene eseguito
+     * (altrimenti lascia il controllo a Spring-Data-REST).
      */
     @GetMapping(params = {
             "title",          // almeno uno dei parametri ⇒ mapping valido
@@ -39,3 +38,4 @@ public class BookSearchController {
         return repo.searchByOptionalFilters(title, author, genre, isbn, publicationYear);
     }
 }
+

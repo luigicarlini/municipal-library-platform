@@ -1,8 +1,11 @@
+// services/reservation-service/src/main/java/it/comune/library/reservation/config/RestExceptionAdvice.java
 package it.comune.library.reservation.config;
 
+import it.comune.library.reservation.exception.InsufficientStockException; // NEW
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.OptimisticLockException;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,12 +15,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import jakarta.validation.ConstraintViolationException;
 
 /**
  * Cattura le eccezioni comuni e restituisce sempre JSON:
- * { "status": <codice>, "error": "<messaggio>" }
+ * { "status": <codice>, "message": "<messaggio>" }
  */
 @RestControllerAdvice
 public class RestExceptionAdvice {
@@ -43,6 +45,12 @@ public class RestExceptionAdvice {
         return body(ex.getMessage(), HttpStatus.CONFLICT);
     }
 
+    /* 409 – stock insufficiente */
+    @ExceptionHandler(InsufficientStockException.class) // NEW
+    public ResponseEntity<ApiError> handleStock(InsufficientStockException ex) {
+        return body(ex.getMessage(), HttpStatus.CONFLICT); // 409 (o 422 se preferisci)
+    }
+
     /* fallback 500 */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> unknown(Exception ex) {
@@ -59,10 +67,6 @@ public class RestExceptionAdvice {
     @ExceptionHandler(OptimisticLockException.class)
     public ResponseEntity<ApiError> handleOptimisticLock(OptimisticLockException ex) {
 
-        /*
-         * manteniamo il messaggio originale (se presente) ma
-         * anteponiamo la keyword che il test si aspetta
-         */
         String msg = "Optimistic lock – " +
                 (ex.getMessage() != null
                         ? ex.getMessage()
@@ -113,7 +117,6 @@ public class RestExceptionAdvice {
             return body("Validation error: " + v.getMessage(), HttpStatus.BAD_REQUEST);
         }
 
-        /* Se arrivasse un Optimistic lock da qui lo etichettiamo comunque */
         if (root instanceof OptimisticLockException) {
             return body("Optimistic lock – " + root.getMessage(), HttpStatus.CONFLICT);
         }
@@ -121,6 +124,15 @@ public class RestExceptionAdvice {
         return body("Internal error", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ExceptionHandler(org.postgresql.util.PSQLException.class)
+    public ResponseEntity<ApiError> handlePgExceptions(org.postgresql.util.PSQLException ex) {
+        if ("P0001".equals(ex.getSQLState())) {
+            return body("Insufficient stock (trigger)", HttpStatus.CONFLICT);
+        }
+        return body("DB error", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /* DTO risposta errore */
     public record ApiError(int status, String message) {
     }
 }
