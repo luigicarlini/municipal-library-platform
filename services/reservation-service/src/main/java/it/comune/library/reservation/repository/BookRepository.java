@@ -40,9 +40,12 @@ public interface BookRepository extends JpaRepository<Book, UUID> {
 
   /* ─────────── Hard-delete (ignora @SQLDelete/@Where) ─────────── */
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
-  @Query(value = "DELETE FROM books WHERE id = :id", nativeQuery = true)
-  int hardDeleteByIdNative(@Param("id") UUID id);
+    @Modifying(
+        flushAutomatically = true,       // forza il flush prima del bulk
+        clearAutomatically = true        // svuota il persistence-context
+    )
+    @Query(value = "DELETE FROM books WHERE id = :id", nativeQuery = true)
+    int hardDeleteByIdNative(@Param("id") UUID id);
 
   /* Legge il flag deleted bypassando @Where */
   @Query(value = "SELECT deleted FROM books WHERE id = :id", nativeQuery = true)

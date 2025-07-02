@@ -3,6 +3,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <!-- ───────────────────────────────  INFO  ─────────────────────────────── -->
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -10,11 +11,13 @@
         <version>3.3.0</version>
         <relativePath/>
     </parent>
+
     <groupId>it.comune.library</groupId>
     <artifactId>reservation-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>reservation-service</name>
-    <description>Municipal Library – Reservation &amp; Book-shop microservice</description>
+    <description>Municipal Library – Reservation &amp; Book‑shop microservice</description>
+
     <!-- ─────────────────────────────  VERSIONS  ───────────────────────────── -->
     <properties>
         <java.version>17</java.version>
@@ -22,10 +25,11 @@
         <postgres.version>42.7.3</postgres.version>
         <testcontainers.version>1.19.8</testcontainers.version>
     </properties>
-    <!-- ─────────────────────  BOMs (import-scope)  ────────────────────────── -->
+
+    <!-- ─────────────────────  BOMs (import‑scope)  ────────────────────────── -->
     <dependencyManagement>
         <dependencies>
-            <!-- Allure: gestisce tutte le dipendenze della famiglia -->
+            <!-- Allure -->
             <dependency>
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-bom</artifactId>
@@ -33,7 +37,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- BOM Testcontainers (facoltativo ma consigliato) -->
+            <!-- Testcontainers BOM -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
@@ -43,7 +47,8 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    <!-- ───────────────────────────  DEPENDENCIES  ────────────────────────── -->
+
+    <!-- ───────────────────────────  DEPENDENCIES  ─────────────────────────── -->
     <dependencies>
         <!-- Spring -->
         <dependency>
@@ -62,18 +67,20 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-rest</artifactId>
         </dependency>
+
         <!-- Kafka -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
-        <!--  🔧 sostituisci il blocco esistente  -->
+
+        <!-- PostgreSQL driver (compile‑scope) -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgres.version}</version>
-            <!-- scope compile di default: lascialo senza <scope> -->
         </dependency>
+
         <!-- Flyway -->
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -85,31 +92,42 @@
             <artifactId>flyway-database-postgresql</artifactId>
             <version>${flyway.version}</version>
         </dependency>
-        <!-- Lombok -->
+
+        <!-- Lombok (provided) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.30</version>
             <scope>provided</scope>
         </dependency>
+
         <!-- Modulo condiviso Avro -->
         <dependency>
             <groupId>it.comune.library</groupId>
             <artifactId>common</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+
         <!-- Swagger/OpenAPI -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.5.0</version>
         </dependency>
-        <!-- Testcontainers – API JUnit5 (@Testcontainers, @Container) -->
+
+        <!-- Testcontainers API (JUnit 5) -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Testcontainers module for PostgreSQL -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- ──────────────────────────────── Test ──────────────────────────── -->
         <dependency>
             <groupId>com.h2database</groupId>
@@ -126,19 +144,15 @@
             <artifactId>spring-kafka-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Testcontainers -->
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Allure JUnit5 (versione derivata dal BOM) -->
+
+        <!-- Allure (versione via BOM) -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
             <artifactId>allure-junit5</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
+
     <!-- ──────────────────────────────  BUILD  ────────────────────────────── -->
     <build>
         <plugins>
@@ -147,6 +161,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
+                    <release>${java.version}</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -156,6 +171,7 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
             <!-- Flyway (local dev) -->
             <plugin>
                 <groupId>org.flywaydb</groupId>
@@ -173,6 +189,7 @@
                     </locations>
                 </configuration>
             </plugin>
+
             <!-- Spring Boot -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -186,7 +203,8 @@
                     </excludes>
                 </configuration>
             </plugin>
-            <!-- Avro code-gen -->
+
+            <!-- Avro code‑gen -->
             <plugin>
                 <groupId>org.apache.avro</groupId>
                 <artifactId>avro-maven-plugin</artifactId>
@@ -203,7 +221,8 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Allure report (facoltativo; fase verify) -->
+
+            <!-- Allure report (verify) -->
             <plugin>
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-maven</artifactId>
@@ -221,12 +240,13 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Surefire -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
                 <configuration>
-                    <!-- default = 30 -->
                     <forkedProcessExitTimeoutInSeconds>120</forkedProcessExitTimeoutInSeconds>
                 </configuration>
             </plugin>

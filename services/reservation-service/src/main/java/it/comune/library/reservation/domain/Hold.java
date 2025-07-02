@@ -7,58 +7,68 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * 📦 Entità JPA che rappresenta una prenotazione (“hold”).
+ */
 @Entity
 @Table(name = "holds")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "📦 Entità JPA che rappresenta una prenotazione (Hold) di un libro")
+@Schema(description = "Prenotazione di un libro (hold)")
 public class Hold {
 
-    @Id
-    @GeneratedValue
-    @Schema(description = "ID interno generato della prenotazione", example = "5be310da-e78e-4d29-a555-dc16c9820a88")
+    /** Chiave tecnica interna (PK) */
+    @Id @GeneratedValue
+    @Schema(example = "5be310da-e78e-4d29-a555-dc16c9820a88")
     private UUID id;
 
+    /** Identificativo pubblico esposto alle API */
     @Column(name = "hold_id", nullable = false, unique = true)
-    @Schema(description = "ID pubblico visibile della prenotazione", example = "5be310da-e78e-4d29-a555-dc16c9820a88")
+    @Schema(example = "5be310da-e78e-4d29-a555-dc16c9820a88")
     private UUID holdId;
 
+    /** Utente che ha effettuato la prenotazione */
     @Column(name = "patron_id", nullable = false)
-    @Schema(description = "ID dell'utente che ha effettuato la prenotazione", example = "19b81f1c-70fe-45df-be26-876af053f88b")
+    @Schema(example = "19b81f1c-70fe-45df-be26-876af053f88b")
     private UUID patronId;
 
+    /** FK al libro prenotato (colonna bib_id) */
     @Column(name = "bib_id", nullable = false)
-    @Schema(description = "ID del libro prenotato", example = "3fc24a80-c82c-4e0a-97eb-7830fb1fc746")
+    @Schema(example = "3fc24a80-c82c-4e0a-97eb-7830fb1fc746")
     private UUID bibId;
 
+    /** Associazione JPA 👉 serve per join/filter */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bib_id", referencedColumnName = "id", insertable = false, updatable = false)
-    @Schema(description = "Riferimento al libro associato alla prenotazione")
+    @JoinColumn(name = "bib_id", referencedColumnName = "id",
+                insertable = false, updatable = false)
     private Book book;
 
+    /** Filiale di ritiro */
     @Column(name = "pickup_branch", nullable = false)
-    @Schema(description = "Filiale di ritiro scelta dall'utente", example = "Centrale")
+    @Schema(example = "CENTRAL")
     private String pickupBranch;
 
+    /** Stato attuale */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Schema(description = "Stato attuale della prenotazione", example = "PLACED")
+    @Schema(example = "PLACED")
     private HoldStatus status;
 
-    @Schema(description = "Posizione nella coda di prenotazione", example = "1")
+    /** Posizione in coda (facoltativa) */
     private Integer position;
 
+    /** Timestamp creazione */
     @Column(name = "created_at", nullable = false, updatable = false)
-    @Schema(description = "Timestamp di creazione della prenotazione", example = "2025-05-22T11:44:50.544091Z")
     private Instant createdAt;
 
+    /* ---------------------------- lifecycle ---------------------------- */
     @PrePersist
-    public void prePersist() {
+    void prePersist() {
         this.createdAt = Instant.now();
-        if (this.holdId == null) {
-            this.holdId = this.id;
+        if (this.holdId == null) {          // rende id “pubblico” stabile
+            this.holdId = UUID.randomUUID();
         }
     }
 }

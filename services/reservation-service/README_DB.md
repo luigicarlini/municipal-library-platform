@@ -148,6 +148,40 @@ http://localhost:8080/swagger-ui/index.html#/
 
 
 
+README_DB.md – new section
+-----------------------------------------------------------------------------------------------------
+## 3.3  Foreign-key & cascade rules  ⬆️
+
+| Child table | FK column | Parent table | Delete rule | Purpose |
+|-------------|-----------|--------------|-------------|---------|
+| **holds**   | `bib_id`  | **books**    | **ON DELETE CASCADE** | 
+Remove every hold automatically when its book is physically deleted (`mode=hard`). 
+Soft-delete (`books.deleted = TRUE`) does **not** cascade; holds are left untouched and may later be restored. |
+
+> **Why?**  
+> • Keeps the schema lean (no orphan records).  
+> • Avoids double work in the service layer – the database remains the single source of truth.
+
+---
+
+### 3.4 Seed datasets for integration tests
+
+| Script | Purpose | Records |
+|--------|---------|---------|
+| `soft_delete_cascade_dataset.sql` | 1 book + 3 holds (PLACED/READY) – used by *BookSoftDeleteCascadeIT* | 4 |
+| `hard_delete_cascade_dataset.sql` | 1 book + 2 holds (PLACED) – used by *BookHardDeleteCascadeIT* | 3 |
+| `holds_pagination_dataset.sql`    | 10 books + 20 holds (mixed status) – pagination tests | 30 |
+
+All seed files live under `src/test/resources/sql/`. They start with
+
+```sql
+TRUNCATE TABLE holds, books RESTART IDENTITY CASCADE;
+
+
+
+
+
+
 
 
 
