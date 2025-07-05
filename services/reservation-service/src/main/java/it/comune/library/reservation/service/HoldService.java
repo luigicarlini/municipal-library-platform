@@ -24,9 +24,11 @@ public class HoldService {
     private final BookRepository bookRepo;
     private final HoldMapper holdMapper;
 
-    /* --------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------------
      * 1. Creazione di una prenotazione (stato = PLACED)
-     * ------------------------------------------------------------------ */
+     * ------------------------------------------------------------------
+     */
     @Transactional
     public HoldDto create(HoldDto dto) {
 
@@ -35,8 +37,7 @@ public class HoldService {
         // libro esistente e non soft-deleted?
         Book book = bookRepo.findById(bibId)
                 .filter(b -> !b.isDeleted())
-                .orElseThrow(() ->
-                        new IllegalStateException("Book deleted or not found"));
+                .orElseThrow(() -> new IllegalStateException("Book deleted or not found"));
 
         // posizione nella coda (“PLACED”)
         long count = holdRepo.countByBibIdAndStatus(bibId, HoldStatus.PLACED);
@@ -53,13 +54,16 @@ public class HoldService {
         return holdMapper.toDto(holdRepo.save(hold));
     }
 
-    /* --------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------------
      * 2. Ricerca paginata con filtri facoltativi
-     * ------------------------------------------------------------------ */
+     * ------------------------------------------------------------------
+     */
     @Transactional(readOnly = true)
     public Page<HoldDto> searchPaged(
             HoldStatus status,
             String pickupBranch,
+            String title, // 👈 nuovo parametro
             int page,
             int size,
             Sort sort) {
@@ -75,16 +79,21 @@ public class HoldService {
         if (pickupBranch != null && !pickupBranch.isBlank()) {
             spec = spec.and(HoldSpecs.byPickupBranch(pickupBranch.trim()));
         }
+        if (title != null && !title.isBlank()) { // 🆕
+            spec = spec.and(HoldSpecs.byBookTitle(title.trim()));
+        }
 
         Page<Hold> result = holdRepo.findAll(spec, pageable);
 
-        return result.map(holdMapper::toDto);           // mapping -> DTO
+        return result.map(holdMapper::toDto); // mapping -> DTO
     }
 
-    /* --------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------------
      * 3. Convenienza: restituisce solo il conteggio per *gli stessi filtri*
-     *    (utile per intestazione X-Total-Count senza rileggere l’intera page)
-     * ------------------------------------------------------------------ */
+     * (utile per intestazione X-Total-Count senza rileggere l’intera page)
+     * ------------------------------------------------------------------
+     */
     @Transactional(readOnly = true)
     public long count(HoldStatus status, String pickupBranch) {
 
@@ -99,7 +108,9 @@ public class HoldService {
         return holdRepo.count(spec);
     }
 
-    /* --------------------------------------------------------------------
+    /*
+     * --------------------------------------------------------------------
      * … eventuali altri metodi legacy già presenti (no-change) …
-     * ------------------------------------------------------------------ */
+     * ------------------------------------------------------------------
+     */
 }

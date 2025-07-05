@@ -9,7 +9,8 @@ import org.springframework.data.jpa.domain.Specification;
  */
 public final class HoldSpecs {
 
-    private HoldSpecs() {}
+    private HoldSpecs() {
+    }
 
     /** Filtra per stato */
     public static Specification<Hold> byStatus(HoldStatus status) {
@@ -18,14 +19,18 @@ public final class HoldSpecs {
 
     /** Filtra per branch (case-insensitive) */
     public static Specification<Hold> byPickupBranch(String branch) {
-        return (root, q, cb) ->
-                cb.equal(cb.lower(root.get("pickupBranch")),
-                         branch.toLowerCase());
+        return (root, q, cb) -> cb.equal(cb.lower(root.get("pickupBranch")),
+                branch.toLowerCase());
     }
 
     /** Include solo libri non soft-deleted */
     public static Specification<Hold> bookNotDeleted() {
-        return (root, q, cb) ->
-                cb.isFalse(root.join("book").get("deleted"));
+        return (root, q, cb) -> cb.isFalse(root.join("book").get("deleted"));
     }
+
+    public static Specification<Hold> byBookTitle(String title) {
+        return (root, query, cb) -> cb.like(cb.lower(root.join("book").get("title")),
+                "%" + title.toLowerCase() + "%");
+    }
+
 }

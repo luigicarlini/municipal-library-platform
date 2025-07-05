@@ -5,6 +5,7 @@ import it.comune.library.reservation.domain.HoldStatus;
 import lombok.Data;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -31,4 +32,7 @@ public class HoldDto {
 
     @Schema(description = "Data e ora di creazione della prenotazione", example = "2025-05-22T11:44:50.544091Z")
     private Instant createdAt;
+
+    @Schema(description = "Data di scadenza della prenotazione", example = "2025-07-15")
+    private LocalDate dueDate;
 }

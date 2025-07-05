@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -62,6 +63,11 @@ public class Hold {
     /** Timestamp creazione */
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    /** Data di restituzione */
+    @Column
+    //@Column(name = "due_date", nullable = true)
+    private LocalDate dueDate;
 
     /* ---------------------------- lifecycle ---------------------------- */
     @PrePersist

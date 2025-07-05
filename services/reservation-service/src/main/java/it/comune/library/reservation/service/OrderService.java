@@ -16,12 +16,12 @@ import java.util.Optional;
 import it.comune.library.reservation.exception.InsufficientStockException;
 
 /* ---------- imports AGGIUNTIVI ---------- */
-import it.comune.library.reservation.exception.InsufficientStockException;
-import it.comune.library.reservation.domain.Book;
+// import it.comune.library.reservation.exception.InsufficientStockException;
+// import it.comune.library.reservation.domain.Book;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
-import org.springframework.data.jpa.repository.Lock;
-import jakarta.persistence.LockModeType;
+// import jakarta.transaction.Transactional;
+// import org.springframework.data.jpa.repository.Lock;
+// import jakarta.persistence.LockModeType;
 
 /**
  * 💼 Logica di business per gli ordini Bookshop.

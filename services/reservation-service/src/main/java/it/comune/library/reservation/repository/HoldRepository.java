@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -134,4 +135,20 @@ public interface HoldRepository
         AND h.status = 'PLACED'
       """)
   int findMaxPositionByBibId(@Param("bibId") UUID bibId);
+
+  /*
+   * ───────────────────────────────
+   * Scadenza Prenotazione
+   * ──────────────────────────────
+  */
+  @Modifying
+  @Query("""
+         UPDATE Hold h SET h.status = 'OVERDUE'
+          WHERE h.dueDate < :today
+            AND h.status IN ('PLACED', 'READY')
+      """)
+  int updateStatusOverdue(@Param("today") LocalDate today);
+
+  /* utile per i test */
+  long countByStatus(HoldStatus status);
 }
